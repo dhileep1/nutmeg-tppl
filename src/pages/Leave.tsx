@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -154,18 +153,14 @@ const Leave = () => {
     const dateStr = format(day, 'yyyy-MM-dd');
     const count = teamLeaveDates.get(dateStr) || 0;
     
-    if (count > 0) {
-      return (
-        <div className="relative flex items-center justify-center w-full h-full">
-          <span>{day.getDate()}</span>
-          {count > 0 && (
-            <div className="absolute bottom-0 w-4 h-1 rounded-full bg-red-500"/>
-          )}
-        </div>
-      );
-    }
-    
-    return day.getDate();
+    return (
+      <div className="relative flex items-center justify-center w-full h-full">
+        <span>{day.getDate()}</span>
+        {count > 0 && (
+          <div className="absolute bottom-0 w-4 h-1 rounded-full bg-red-500"/>
+        )}
+      </div>
+    );
   };
 
   return (
