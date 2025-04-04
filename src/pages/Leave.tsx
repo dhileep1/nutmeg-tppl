@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,6 +17,8 @@ import { CalendarDays, Plus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format, differenceInDays, addDays } from "date-fns";
 import { toast } from "sonner";
 
 // Mock leave data
@@ -57,11 +59,32 @@ const leaveBalance = [
   { type: "Compensatory Off", total: 3, used: 0, balance: 3 },
 ];
 
+// Function to get the dates where team members are on leave
+const getTeamLeaveHighlights = () => {
+  // Map dates to highlight on calendar
+  const dateMap = new Map();
+  
+  leaveData.forEach(leave => {
+    const start = new Date(leave.startDate);
+    const end = new Date(leave.endDate);
+    
+    // For each day in the leave period
+    for (let day = start; day <= end; day = addDays(day, 1)) {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const count = dateMap.get(dateStr) || 0;
+      dateMap.set(dateStr, count + 1);
+    }
+  });
+  
+  return dateMap;
+};
+
 const Leave = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [teamLeaveDates, setTeamLeaveDates] = useState<Map<string, number>>(new Map());
   
   const [leaveRequestData, setLeaveRequestData] = useState({
     type: "Annual Leave",
@@ -70,11 +93,50 @@ const Leave = () => {
     reason: "",
   });
 
+  // Get team leave dates for highlighting on calendar
+  useEffect(() => {
+    setTeamLeaveDates(getTeamLeaveHighlights());
+  }, []);
+
+  // Calculate number of days between start and end date
+  const calculateDays = () => {
+    if (!leaveRequestData.startDate || !leaveRequestData.endDate) return 0;
+    return differenceInDays(
+      new Date(leaveRequestData.endDate),
+      new Date(leaveRequestData.startDate)
+    ) + 1;
+  };
+
   const handleDataIngestion = () => {
     toast.success("Leave data ingestion initiated");
   };
 
   const handleRequestSubmit = () => {
+    // Calculate days before submitting
+    const days = calculateDays();
+    
+    // Add to leaveData (in a real app, this would be saved to the database)
+    const newLeave = {
+      id: Math.max(...leaveData.map(l => l.id)) + 1,
+      type: leaveRequestData.type,
+      startDate: format(leaveRequestData.startDate, 'yyyy-MM-dd'),
+      endDate: format(leaveRequestData.endDate, 'yyyy-MM-dd'),
+      days,
+      reason: leaveRequestData.reason,
+      status: "Pending"
+    };
+    
+    // Update the team leave dates for the calendar
+    const updatedTeamLeaves = new Map(teamLeaveDates);
+    for (let day = leaveRequestData.startDate; 
+         day <= leaveRequestData.endDate; 
+         day = addDays(day, 1)) {
+      const dateStr = format(day, 'yyyy-MM-dd');
+      const count = updatedTeamLeaves.get(dateStr) || 0;
+      updatedTeamLeaves.set(dateStr, count + 1);
+    }
+    setTeamLeaveDates(updatedTeamLeaves);
+    
     toast.success("Leave request submitted successfully");
     setIsDialogOpen(false);
   };
@@ -85,6 +147,25 @@ const Leave = () => {
 
   const handleReject = (id: number) => {
     toast.success(`Leave request #${id} rejected`);
+  };
+  
+  // Calendar day rendering to highlight team leave days
+  const renderCalendarDay = (day: Date) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const count = teamLeaveDates.get(dateStr) || 0;
+    
+    if (count > 0) {
+      return (
+        <div className="relative flex items-center justify-center w-full h-full">
+          <span>{day.getDate()}</span>
+          {count > 0 && (
+            <div className="absolute bottom-0 w-4 h-1 rounded-full bg-red-500"/>
+          )}
+        </div>
+      );
+    }
+    
+    return day.getDate();
   };
 
   return (
@@ -108,7 +189,7 @@ const Leave = () => {
                 <Plus className="h-4 w-4 mr-2" /> Request Leave
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>New Leave Request</DialogTitle>
                 <DialogDescription>
@@ -138,27 +219,64 @@ const Leave = () => {
                   <div>
                     <Label>Start Date</Label>
                     <div className="mt-1">
-                      <Calendar
-                        mode="single"
-                        selected={leaveRequestData.startDate}
-                        onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, startDate: date})}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            {leaveRequestData.startDate ? (
+                              format(leaveRequestData.startDate, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={leaveRequestData.startDate}
+                            onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, startDate: date})}
+                            initialFocus
+                            className="rounded-md"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   <div>
                     <Label>End Date</Label>
                     <div className="mt-1">
-                      <Calendar
-                        mode="single"
-                        selected={leaveRequestData.endDate}
-                        onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, endDate: date})}
-                      />
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-start text-left font-normal">
+                            {leaveRequestData.endDate ? (
+                              format(leaveRequestData.endDate, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarDays className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={leaveRequestData.endDate}
+                            onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, endDate: date})}
+                            initialFocus
+                            className="rounded-md"
+                          />
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                 </div>
                 
                 <div>
-                  <Label>Reason for Leave</Label>
+                  <div className="flex justify-between">
+                    <Label>Reason for Leave</Label>
+                    <span className="text-sm text-muted-foreground">
+                      Days: {calculateDays()}
+                    </span>
+                  </div>
                   <Textarea 
                     value={leaveRequestData.reason}
                     onChange={(e) => setLeaveRequestData({...leaveRequestData, reason: e.target.value})}
@@ -339,12 +457,21 @@ const Leave = () => {
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 className="rounded-md border"
+                components={{
+                  DayContent: ({ date }) => renderCalendarDay(date),
+                }}
               />
             </CardContent>
             <CardFooter className="border-t pt-4">
-              <p className="text-sm text-muted-foreground">
-                View team member availability at a glance
-              </p>
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-muted-foreground">
+                  View team member availability at a glance
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-sm">Team member on leave</span>
+                </div>
+              </div>
             </CardFooter>
           </Card>
         </TabsContent>
