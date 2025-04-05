@@ -142,34 +142,25 @@ const Leave = () => {
     toast.success("Leave data ingestion initiated");
   };
 
-  const handleRequestSubmit = () => {
+  const handleRequestSubmit = async () => {
     // Calculate days before submitting
     const days = calculateDays();
 
     // Add to leaveData (in a real app, this would be saved to the database)
-    const newLeave = new FormData();
-    newLeave.append("user_id", user_id);
-    newLeave.append("leave_type", leaveRequestData.leave_type);
-    newLeave.append(
-      "start_date",
-      format(leaveRequestData.start_date, "yyyy-MM-dd")
-    );
-    newLeave.append(
-      "end_date",
-      format(leaveRequestData.end_date, "yyyy-MM-dd")
-    );
-    newLeave.append("days", String(days));
-    newLeave.append("reason", leaveRequestData.reason);
-
-    axios.post("http://127.0.0.1:3000/leave");
-    const new_leave = {
-      user_id: user_id,
+    const newLeave = {
+      user_id,
       leave_type: leaveRequestData.leave_type,
       start_date: format(leaveRequestData.start_date, "yyyy-MM-dd"),
       end_date: format(leaveRequestData.end_date, "yyyy-MM-dd"),
       days,
       reason: leaveRequestData.reason,
     };
+
+    const response = await axios.post(
+      "http://127.0.0.1:3000/newleave",
+      newLeave
+    );
+    console.log("Response on Leave Request Post", response);
 
     // Update the team leave dates for the calendar
     const updatedTeamLeaves = new Map(teamLeaveDates);
