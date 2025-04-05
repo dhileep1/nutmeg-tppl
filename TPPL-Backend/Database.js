@@ -1,12 +1,11 @@
-
 const { Pool } = require("pg");
-require('dotenv').config();
+require("dotenv").config();
 
 // Create a connection pool for PostgreSQL
 const pool = new Pool({
-  user: process.env.DB_USER || "myuser",
+  user: process.env.DB_USER || "postgres",
   host: process.env.DB_HOST || "localhost",
-  database: process.env.DB_NAME || "tppl",
+  database: process.env.DB_NAME || "tppl_db",
   password: process.env.DB_PASSWORD || "password",
   port: process.env.DB_PORT || 5432,
 });
@@ -15,11 +14,11 @@ const pool = new Pool({
 const testConnection = async () => {
   try {
     const client = await pool.connect();
-    console.log('Database connection successful');
+    console.log("Database connection successful");
     client.release();
     return true;
   } catch (err) {
-    console.error('Database connection error:', err.message);
+    console.error("Database connection error:", err.message);
     return false;
   }
 };
@@ -27,5 +26,5 @@ const testConnection = async () => {
 module.exports = {
   pool,
   testConnection,
-  query: (text, params) => pool.query(text, params)
+  query: (text, params) => pool.query(text, params),
 };
