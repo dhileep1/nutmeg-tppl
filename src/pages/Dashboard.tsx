@@ -1,13 +1,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, FileText, ChartBar, CalendarDays, UserCog } from "lucide-react";
+import { Clock, FileText, ChartBar, CalendarDays } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Link } from "react-router-dom";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  
-  // Basic modules available to all users
+
   const modules = [
     {
       title: "Timesheet",
@@ -39,17 +38,6 @@ const Dashboard = () => {
     },
   ];
 
-  // Admin-only modules
-  const adminModules = [
-    {
-      title: "Admin Dashboard",
-      description: "Manage users and company settings",
-      icon: <UserCog className="h-10 w-10 text-purple-600" />,
-      link: "/admin",
-      color: "bg-purple-50",
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div>
@@ -61,23 +49,6 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {modules.map((module) => (
-          <Link to={module.link} key={module.title}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardHeader className={`${module.color} rounded-t-lg p-4`}>
-                {module.icon}
-              </CardHeader>
-              <CardContent className="pt-4">
-                <CardTitle className="text-lg">{module.title}</CardTitle>
-                <CardDescription className="mt-2">
-                  {module.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-        
-        {/* Admin-only modules */}
-        {user?.role === 'admin' && adminModules.map((module) => (
           <Link to={module.link} key={module.title}>
             <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardHeader className={`${module.color} rounded-t-lg p-4`}>
