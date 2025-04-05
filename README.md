@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -20,45 +21,70 @@ If you want to work locally using your own IDE, you can clone this repo and push
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Follow these steps:
+## Local Development Setup
+
+### Prerequisites
+- Node.js (v18 or later)
+- npm (v9 or later)
+
+### Installation Steps
+
+1. Clone the repository
+```sh
+git clone <YOUR_GIT_URL>
+cd <YOUR_PROJECT_NAME>
+```
+
+2. Install dependencies for both frontend and backend
+```sh
+# Install frontend dependencies
+npm install
+
+# Install backend dependencies
+cd TPPL-Backend
+npm install
+cd ..
+```
+
+3. Set up environment variables
+- Create a `.env` file in the `TPPL-Backend` directory
+- Add the following required environment variables:
+  ```
+  PORT=5000
+  DATABASE_URL=your_postgres_connection_string
+  JWT_SECRET=your_jwt_secret
+  ```
+
+### Running the Application
+
+You can run the frontend and backend concurrently:
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Open two terminal windows/tabs
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Terminal 1: Start the backend server
+cd TPPL-Backend
+npm run dev
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Terminal 2: Start the frontend development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Accessing the Application
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:5000`
 
 ## What technologies are used for this project?
 
 This project is built with:
-
 - Vite
 - TypeScript
 - React
 - shadcn-ui
 - Tailwind CSS
+- Node.js
+- Express
+- PostgreSQL
 
 ## How can I deploy this project?
 
@@ -71,3 +97,4 @@ Yes it is!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```
