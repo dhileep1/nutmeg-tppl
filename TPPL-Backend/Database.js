@@ -1,3 +1,4 @@
+
 const { Pool } = require("pg");
 require("dotenv").config();
 
@@ -23,8 +24,26 @@ const testConnection = async () => {
   }
 };
 
+// Execute SQL script
+const executeScript = async (script) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(script);
+    await client.query('COMMIT');
+    return true;
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error("Script execution error:", err.message);
+    return false;
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   pool,
   testConnection,
+  executeScript,
   query: (text, params) => pool.query(text, params),
 };

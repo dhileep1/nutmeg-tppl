@@ -9,8 +9,10 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// All routes require authentication
 router.use(authMiddleware);
 
+// Regular routes
 router.get('/', getPayroll);
 router.get('/:id', getPayrollById);
 router.post('/generate', generatePayroll);

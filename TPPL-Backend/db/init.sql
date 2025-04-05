@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(100) NOT NULL,
   role VARCHAR(20) NOT NULL DEFAULT 'employee',
   hourly_rate DECIMAL(10, 2) DEFAULT 0,
+  onboarded_by INTEGER REFERENCES users(id),
+  onboarded_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP
 );

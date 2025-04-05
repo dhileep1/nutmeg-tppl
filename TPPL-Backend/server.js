@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const { testConnection } = require('./Database');
+const { updateUserTable } = require('./db/user_scripts');
 const userRoutes = require('./routes/userRoutes');
 const timesheetRoutes = require('./routes/timesheetRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
@@ -18,7 +19,18 @@ app.use(express.json());
 app.use(morgan('dev'));
 
 // Test database connection
-testConnection();
+testConnection().then(connected => {
+  if (connected) {
+    // Run database migrations
+    updateUserTable().then(updated => {
+      if (updated) {
+        console.log('Database migrations completed successfully');
+      } else {
+        console.error('Failed to update database schema');
+      }
+    });
+  }
+});
 
 // Routes
 app.use('/api/users', userRoutes);
