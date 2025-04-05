@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Label } from "@/components/ui/label";
@@ -15,95 +22,120 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { format, differenceInDays, addDays } from "date-fns";
 import { toast } from "sonner";
-
+import axios from "axios";
 // Mock leave data
-const leaveData = [
-  {
-    id: 1,
-    type: "Annual Leave",
-    startDate: "2025-04-10",
-    endDate: "2025-04-11",
-    days: 2,
-    reason: "Personal",
-    status: "Approved",
-  },
-  {
-    id: 2,
-    type: "Sick Leave",
-    startDate: "2025-02-15",
-    endDate: "2025-02-15",
-    days: 1,
-    reason: "Health issues",
-    status: "Approved",
-  },
-  {
-    id: 3,
-    type: "Annual Leave",
-    startDate: "2025-05-20",
-    endDate: "2025-05-22",
-    days: 3,
-    reason: "Family function",
-    status: "Pending",
-  },
-];
+// const leaveData = [
+//   {
+// id: 1,
+// leave_type: "Annual Leave",
+// startDate: "2025-04-10",
+// end_date: "2025-04-11",
+// days: 2,
+// reason: "Personal",
+// status: "Approved",
+//   },
+//   {
+//     id: 2,
+// leave_type: "Sick Leave",
+// startDate: "2025-02-15",
+// end_date: "2025-02-15",
+// days: 1,
+// reason: "Health issues",
+// status: "Approved",
+//   },
+//   {
+//     id: 3,
+//     leave_type: "Annual Leave",
+//     startDate: "2025-05-20",
+//     end_date: "2025-05-22",
+//     days: 3,
+//     reason: "Family function",
+//     status: "Pending",
+//   },
+// ];
 
 const leaveBalance = [
-  { type: "Annual Leave", total: 20, used: 5, balance: 15 },
-  { type: "Sick Leave", total: 12, used: 1, balance: 11 },
-  { type: "Casual Leave", total: 6, used: 0, balance: 6 },
-  { type: "Compensatory Off", total: 3, used: 0, balance: 3 },
+  { leave_type: "Annual Leave", total: 20, used: 5, balance: 15 },
+  { leave_type: "Sick Leave", total: 12, used: 1, balance: 11 },
+  { leave_type: "Casual Leave", total: 6, used: 0, balance: 6 },
+  { leave_type: "Compensatory Off", total: 3, used: 0, balance: 3 },
 ];
 
 // Function to get the dates where team members are on leave
-const getTeamLeaveHighlights = () => {
-  // Map dates to highlight on calendar
-  const dateMap = new Map();
-  
-  leaveData.forEach(leave => {
-    const start = new Date(leave.startDate);
-    const end = new Date(leave.endDate);
-    
-    // For each day in the leave period
-    for (let day = start; day <= end; day = addDays(day, 1)) {
-      const dateStr = format(day, 'yyyy-MM-dd');
-      const count = dateMap.get(dateStr) || 0;
-      dateMap.set(dateStr, count + 1);
-    }
-  });
-  
-  return dateMap;
-};
 
 const Leave = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    new Date()
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [teamLeaveDates, setTeamLeaveDates] = useState<Map<string, number>>(new Map());
-  
+  const [teamLeaveDates, setTeamLeaveDates] = useState<Map<string, number>>(
+    new Map()
+  );
   const [leaveRequestData, setLeaveRequestData] = useState({
-    type: "Annual Leave",
-    startDate: new Date(),
-    endDate: new Date(),
+    leave_type: "Annual Leave",
+    start_date: new Date(),
+    end_date: new Date(),
     reason: "",
   });
+  const [leaveData, setLeaveData] = useState([]);
+  const user_id = "U001";
 
   // Get team leave dates for highlighting on calendar
+  const fetchLeaveData = async () => {
+    const response = await axios.get("http://127.0.0.1:3000/leave");
+    setLeaveData((prevState) => response.data.data);
+  };
+
   useEffect(() => {
-    setTeamLeaveDates(getTeamLeaveHighlights());
-  }, []);
+    fetchLeaveData();
+  }, [leaveData]);
+
+  const getTeamLeaveHighlights = () => {
+    // Map dates to highlight on calendar
+    const dateMap = new Map();
+
+    leaveData.forEach((leave) => {
+      const start = new Date(leave.start_date);
+      const end = new Date(leave.end_date);
+
+      // For each day in the leave period
+      for (let day = start; day <= end; day = addDays(day, 1)) {
+        const dateStr = format(day, "yyyy-MM-dd");
+        const count = dateMap.get(dateStr) || 0;
+        dateMap.set(dateStr, count + 1);
+      }
+    });
+
+    return dateMap;
+  };
 
   // Calculate number of days between start and end date
   const calculateDays = () => {
-    if (!leaveRequestData.startDate || !leaveRequestData.endDate) return 0;
-    return differenceInDays(
-      new Date(leaveRequestData.endDate),
-      new Date(leaveRequestData.startDate)
-    ) + 1;
+    if (!leaveRequestData.start_date || !leaveRequestData.end_date) return 0;
+    return (
+      differenceInDays(
+        new Date(leaveRequestData.end_date),
+        new Date(leaveRequestData.start_date)
+      ) + 1
+    );
   };
 
   const handleDataIngestion = () => {
@@ -113,51 +145,76 @@ const Leave = () => {
   const handleRequestSubmit = () => {
     // Calculate days before submitting
     const days = calculateDays();
-    
+
     // Add to leaveData (in a real app, this would be saved to the database)
-    const newLeave = {
-      id: Math.max(...leaveData.map(l => l.id)) + 1,
-      type: leaveRequestData.type,
-      startDate: format(leaveRequestData.startDate, 'yyyy-MM-dd'),
-      endDate: format(leaveRequestData.endDate, 'yyyy-MM-dd'),
+    const newLeave = new FormData();
+    newLeave.append("user_id", user_id);
+    newLeave.append("leave_type", leaveRequestData.leave_type);
+    newLeave.append(
+      "start_date",
+      format(leaveRequestData.start_date, "yyyy-MM-dd")
+    );
+    newLeave.append(
+      "end_date",
+      format(leaveRequestData.end_date, "yyyy-MM-dd")
+    );
+    newLeave.append("days", String(days));
+    newLeave.append("reason", leaveRequestData.reason);
+
+    axios.post("http://127.0.0.1:3000/leave");
+    const new_leave = {
+      user_id: user_id,
+      leave_type: leaveRequestData.leave_type,
+      start_date: format(leaveRequestData.start_date, "yyyy-MM-dd"),
+      end_date: format(leaveRequestData.end_date, "yyyy-MM-dd"),
       days,
       reason: leaveRequestData.reason,
-      status: "Pending"
     };
-    
+
     // Update the team leave dates for the calendar
     const updatedTeamLeaves = new Map(teamLeaveDates);
-    for (let day = leaveRequestData.startDate; 
-         day <= leaveRequestData.endDate; 
-         day = addDays(day, 1)) {
-      const dateStr = format(day, 'yyyy-MM-dd');
+    for (
+      let day = leaveRequestData.start_date;
+      day <= leaveRequestData.end_date;
+      day = addDays(day, 1)
+    ) {
+      const dateStr = format(day, "yyyy-MM-dd");
       const count = updatedTeamLeaves.get(dateStr) || 0;
       updatedTeamLeaves.set(dateStr, count + 1);
     }
     setTeamLeaveDates(updatedTeamLeaves);
-    
+
     toast.success("Leave request submitted successfully");
     setIsDialogOpen(false);
   };
 
   const handleApprove = (id: number) => {
+    console.log("Request Id", id);
+    axios
+      .patch(`http://127.0.0.1:3000/leave/approve/${id}`)
+      .then((response) => {
+        console.log("Response", response);
+      })
+      .catch((error) => console.log(error));
     toast.success(`Leave request #${id} approved`);
+    fetchLeaveData();
   };
 
   const handleReject = (id: number) => {
     toast.success(`Leave request #${id} rejected`);
+    fetchLeaveData();
   };
-  
+
   // Calendar day rendering to highlight team leave days
   const renderCalendarDay = (day: Date) => {
-    const dateStr = format(day, 'yyyy-MM-dd');
+    const dateStr = format(day, "yyyy-MM-dd");
     const count = teamLeaveDates.get(dateStr) || 0;
-    
+
     return (
       <div className="relative flex items-center justify-center w-full h-full">
         <span>{day.getDate()}</span>
         {count > 0 && (
-          <div className="absolute bottom-0 w-4 h-1 rounded-full bg-red-500"/>
+          <div className="absolute bottom-0 w-4 h-1 rounded-full bg-red-500" />
         )}
       </div>
     );
@@ -194,31 +251,41 @@ const Leave = () => {
               <div className="grid gap-4 py-4">
                 <div>
                   <Label>Leave Type</Label>
-                  <Select 
-                    defaultValue={leaveRequestData.type}
-                    onValueChange={(value) => setLeaveRequestData({...leaveRequestData, type: value})}
+                  <Select
+                    defaultValue={leaveRequestData.leave_type}
+                    onValueChange={(value) =>
+                      setLeaveRequestData({
+                        ...leaveRequestData,
+                        leave_type: value,
+                      })
+                    }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select leave type" />
+                      <SelectValue placeholder="Select leave leave_type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Annual Leave">Annual Leave</SelectItem>
                       <SelectItem value="Sick Leave">Sick Leave</SelectItem>
                       <SelectItem value="Casual Leave">Casual Leave</SelectItem>
-                      <SelectItem value="Compensatory Off">Compensatory Off</SelectItem>
+                      <SelectItem value="Compensatory Off">
+                        Compensatory Off
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label>Start Date</Label>
                     <div className="mt-1">
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal">
-                            {leaveRequestData.startDate ? (
-                              format(leaveRequestData.startDate, "PPP")
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            {leaveRequestData.start_date ? (
+                              format(leaveRequestData.start_date, "PPP")
                             ) : (
                               <span>Pick a date</span>
                             )}
@@ -228,8 +295,14 @@ const Leave = () => {
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={leaveRequestData.startDate}
-                            onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, startDate: date})}
+                            selected={leaveRequestData.start_date}
+                            onSelect={(date) =>
+                              date &&
+                              setLeaveRequestData({
+                                ...leaveRequestData,
+                                start_date: date,
+                              })
+                            }
                             initialFocus
                             className="rounded-md"
                           />
@@ -242,9 +315,12 @@ const Leave = () => {
                     <div className="mt-1">
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full justify-start text-left font-normal">
-                            {leaveRequestData.endDate ? (
-                              format(leaveRequestData.endDate, "PPP")
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start text-left font-normal"
+                          >
+                            {leaveRequestData.end_date ? (
+                              format(leaveRequestData.end_date, "PPP")
                             ) : (
                               <span>Pick a date</span>
                             )}
@@ -254,8 +330,14 @@ const Leave = () => {
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={leaveRequestData.endDate}
-                            onSelect={(date) => date && setLeaveRequestData({...leaveRequestData, endDate: date})}
+                            selected={leaveRequestData.end_date}
+                            onSelect={(date) =>
+                              date &&
+                              setLeaveRequestData({
+                                ...leaveRequestData,
+                                end_date: date,
+                              })
+                            }
                             initialFocus
                             className="rounded-md"
                           />
@@ -264,7 +346,7 @@ const Leave = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <div className="flex justify-between">
                     <Label>Reason for Leave</Label>
@@ -272,16 +354,24 @@ const Leave = () => {
                       Days: {calculateDays()}
                     </span>
                   </div>
-                  <Textarea 
+                  <Textarea
                     value={leaveRequestData.reason}
-                    onChange={(e) => setLeaveRequestData({...leaveRequestData, reason: e.target.value})}
+                    onChange={(e) =>
+                      setLeaveRequestData({
+                        ...leaveRequestData,
+                        reason: e.target.value,
+                      })
+                    }
                     placeholder="Brief explanation for your leave request"
                     className="mt-1"
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button onClick={handleRequestSubmit}>Submit Request</Button>
@@ -297,7 +387,7 @@ const Leave = () => {
           <TabsTrigger value="balance">Leave Balance</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="requests" className="space-y-6">
           <Card>
             <CardHeader>
@@ -312,76 +402,87 @@ const Leave = () => {
                       <th className="py-3 px-4 font-medium">Type</th>
                       <th className="py-3 px-4 font-medium">Start Date</th>
                       <th className="py-3 px-4 font-medium">End Date</th>
-                      <th className="py-3 px-4 font-medium text-center">Days</th>
+                      <th className="py-3 px-4 font-medium text-center">
+                        Days
+                      </th>
                       <th className="py-3 px-4 font-medium">Reason</th>
-                      <th className="py-3 px-4 font-medium text-center">Status</th>
-                      {isAdmin && <th className="py-3 px-4 font-medium text-right">Actions</th>}
+                      <th className="py-3 px-4 font-medium text-center">
+                        Status
+                      </th>
+                      {isAdmin && (
+                        <th className="py-3 px-4 font-medium text-right">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {leaveData.map((leave) => (
-                      <tr key={leave.id} className="border-b">
-                        <td className="py-3 px-4">{leave.type}</td>
-                        <td className="py-3 px-4">
-                          {new Date(leave.startDate).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4">
-                          {new Date(leave.endDate).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-4 text-center">{leave.days}</td>
-                        <td className="py-3 px-4">{leave.reason}</td>
-                        <td className="py-3 px-4 text-center">
-                          <Badge
-                            className={
-                              leave.status === "Approved"
-                                ? "bg-green-100 text-green-800 hover:bg-green-200"
-                                : leave.status === "Rejected"
-                                ? "bg-red-100 text-red-800 hover:bg-red-200"
-                                : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                            }
-                          >
-                            {leave.status}
-                          </Badge>
-                        </td>
-                        {isAdmin && leave.status === "Pending" && (
-                          <td className="py-3 px-4 text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                                onClick={() => handleApprove(leave.id)}
-                              >
-                                Approve
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                                onClick={() => handleReject(leave.id)}
-                              >
-                                Reject
-                              </Button>
-                            </div>
+                    {leaveData &&
+                      leaveData.map((leave) => (
+                        <tr key={leave.id} className="border-b">
+                          <td className="py-3 px-4">{leave.leave_type}</td>
+                          <td className="py-3 px-4">
+                            {new Date(leave.start_date).toLocaleDateString()}
                           </td>
-                        )}
-                        {(isAdmin && leave.status !== "Pending") && (
-                          <td></td>
-                        )}
-                      </tr>
-                    ))}
+                          <td className="py-3 px-4">
+                            {new Date(leave.end_date).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {leave.days}
+                          </td>
+                          <td className="py-3 px-4">{leave.reason}</td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge
+                              className={
+                                leave.status === "Approved"
+                                  ? "bg-green-100 text-green-800 hover:bg-green-200"
+                                  : leave.status === "Rejected"
+                                  ? "bg-red-100 text-red-800 hover:bg-red-200"
+                                  : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                              }
+                            >
+                              {leave.status}
+                            </Badge>
+                          </td>
+                          {isAdmin && leave.status === "Pending" && (
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                                  onClick={() => handleApprove(leave.id)}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                                  onClick={() => handleReject(leave.id)}
+                                >
+                                  Reject
+                                </Button>
+                              </div>
+                            </td>
+                          )}
+                          {isAdmin && leave.status !== "Pending" && <td></td>}
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="balance">
           <Card>
             <CardHeader>
               <CardTitle>Leave Balance</CardTitle>
-              <CardDescription>Track your available leave balance</CardDescription>
+              <CardDescription>
+                Track your available leave balance
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -389,39 +490,57 @@ const Leave = () => {
                   <thead>
                     <tr className="border-b text-left">
                       <th className="py-3 px-4 font-medium">Leave Type</th>
-                      <th className="py-3 px-4 font-medium text-center">Total</th>
-                      <th className="py-3 px-4 font-medium text-center">Used</th>
-                      <th className="py-3 px-4 font-medium text-center">Balance</th>
+                      <th className="py-3 px-4 font-medium text-center">
+                        Total
+                      </th>
+                      <th className="py-3 px-4 font-medium text-center">
+                        Used
+                      </th>
+                      <th className="py-3 px-4 font-medium text-center">
+                        Balance
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {leaveBalance.map((balance, index) => (
                       <tr key={index} className="border-b">
-                        <td className="py-3 px-4 font-medium">{balance.type}</td>
-                        <td className="py-3 px-4 text-center">{balance.total}</td>
-                        <td className="py-3 px-4 text-center">{balance.used}</td>
-                        <td className="py-3 px-4 text-center font-semibold">{balance.balance}</td>
+                        <td className="py-3 px-4 font-medium">
+                          {balance.leave_type}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {balance.total}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          {balance.used}
+                        </td>
+                        <td className="py-3 px-4 text-center font-semibold">
+                          {balance.balance}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="bg-muted/40">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Annual Leave Policy</CardTitle>
+                    <CardTitle className="text-lg">
+                      Annual Leave Policy
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="text-sm">
                     <ul className="list-disc pl-4 space-y-1">
                       <li>20 days per calendar year</li>
                       <li>Maximum 5 consecutive days allowed</li>
-                      <li>Request must be submitted at least 7 days in advance</li>
+                      <li>
+                        Request must be submitted at least 7 days in advance
+                      </li>
                       <li>Unused leave can carry forward up to 5 days</li>
                     </ul>
                   </CardContent>
                 </Card>
-                
+
                 <Card className="bg-muted/40">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-lg">Sick Leave Policy</CardTitle>
@@ -429,7 +548,10 @@ const Leave = () => {
                   <CardContent className="text-sm">
                     <ul className="list-disc pl-4 space-y-1">
                       <li>12 days per calendar year</li>
-                      <li>Medical certificate required for more than 2 consecutive days</li>
+                      <li>
+                        Medical certificate required for more than 2 consecutive
+                        days
+                      </li>
                       <li>Notify manager as soon as possible</li>
                       <li>Cannot be carried forward to next year</li>
                     </ul>
@@ -439,7 +561,7 @@ const Leave = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="calendar">
           <Card>
             <CardHeader>

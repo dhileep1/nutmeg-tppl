@@ -1,15 +1,12 @@
-const { Client } = require("pg");
+import pkg from "pg";
+const { Pool } = pkg;
 
-const client = new Client({
-  user: "myuser",
+const pool = new Pool({
+  user: "postgres",
+  password: "pgAdmin4",
   host: "localhost",
-  database: "tppl",
-  password: "password",
   port: 5432,
+  database: "tppl",
 });
 
-client.connect();
-client.query("SELECT * FROM my_table;", (err, res) => {
-  console.log(err ? err.stack : res.rows);
-  client.end();
-});
+export { pool, Pool };
