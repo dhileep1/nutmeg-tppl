@@ -12,6 +12,7 @@ import Timesheet from "./pages/Timesheet";
 import Payroll from "./pages/Payroll";
 import Performance from "./pages/Performance";
 import Leave from "./pages/Leave";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,14 @@ const AppRoutes = () => {
         <ProtectedRoute>
           <Layout>
             <Leave />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/admin" element={
+        <ProtectedRoute>
+          <Layout>
+            <Admin />
           </Layout>
         </ProtectedRoute>
       } />

@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   User,
+  UserCog,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,12 +27,24 @@ const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  // Base menu items for all users
   const menuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: <FileText size={20} /> },
     { path: '/timesheet', label: 'Timesheet', icon: <Clock size={20} /> },
     { path: '/payroll', label: 'Payroll', icon: <FileText size={20} /> },
     { path: '/performance', label: 'Performance', icon: <ChartBar size={20} /> },
     { path: '/leave', label: 'Leave', icon: <CalendarDays size={20} /> },
+  ];
+
+  // Admin-only menu items
+  const adminMenuItems = [
+    { path: '/admin', label: 'Admin', icon: <UserCog size={20} /> },
+  ];
+
+  // Combine menu items based on user role
+  const combinedMenuItems = [
+    ...menuItems,
+    ...(user?.role === 'admin' ? adminMenuItems : []),
   ];
 
   const handleLogout = () => {
@@ -67,7 +80,7 @@ const Layout = ({ children }: LayoutProps) => {
           {/* Menu Items */}
           <nav className="flex-1 py-6 px-3">
             <ul className="space-y-2">
-              {menuItems.map((item) => (
+              {combinedMenuItems.map((item) => (
                 <li key={item.path}>
                   <Link
                     to={item.path}
@@ -125,7 +138,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <Menu />
               </Button>
               <h1 className="text-xl font-semibold ml-4">
-                {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
+                {combinedMenuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
               </h1>
             </div>
             <div className="flex items-center space-x-4">
