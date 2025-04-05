@@ -48,6 +48,20 @@ app.patch("/leave/reject:id", async (req, res) => {
   }
 });
 
+app.post("/newleave", async (req, res) => {
+  const { user_id, leave_type, start_date, end_date, days, reason } = req.body;
+  console.log("Request Body", req.body);
+  try {
+    const result = await pool.query(
+      `INSERT INTO leave_table values ($1, $2, $3, $4, $5, $6)`,
+      [user_id, leave_type, start_date, end_date, parseInt(days), reason]
+    );
+    res.status(201).json({ message: "created record" });
+  } catch (error) {
+    console.log("Error while post leave request", error);
+    res.status(500).json({ message: "failed to create record" });
+  }
+});
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
