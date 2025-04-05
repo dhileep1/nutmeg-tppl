@@ -1,3 +1,4 @@
+
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../Database');
@@ -152,83 +153,10 @@ const getAllUsers = async (req, res) => {
   }
 };
 
-// Admin create new user (admin only)
-const createUser = async (req, res) => {
-  try {
-    // Check if admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to create users' });
-    }
-
-    const { username, email, password, fullName, role, hourlyRate } = req.body;
-    
-    // Validate required fields
-    if (!username || !email || !password || !fullName) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
-    }
-    
-    // Check if user already exists
-    const userExists = await db.query('SELECT * FROM users WHERE email = $1 OR username = $2', [email, username]);
-    if (userExists.rows.length > 0) {
-      return res.status(400).json({ message: 'User already exists with this email or username' });
-    }
-    
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    // Create user with hourly rate if provided
-    const result = await db.query(
-      'INSERT INTO users (username, email, password, full_name, role, hourly_rate, created_at) VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING id, username, email, full_name, role, hourly_rate',
-      [username, email, hashedPassword, fullName, role || 'employee', hourlyRate || 0]
-    );
-    
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-      data: result.rows[0]
-    });
-  } catch (error) {
-    console.error('User creation error:', error);
-    res.status(500).json({ message: 'Server error during user creation' });
-  }
-};
-
-// Delete user (admin only)
-const deleteUser = async (req, res) => {
-  try {
-    // Check if admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized to delete users' });
-    }
-
-    const userId = req.params.id;
-    
-    // Check if user exists
-    const userExists = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
-    if (userExists.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Delete user
-    await db.query('DELETE FROM users WHERE id = $1', [userId]);
-    
-    res.status(200).json({
-      success: true,
-      message: 'User deleted successfully'
-    });
-  } catch (error) {
-    console.error('User deletion error:', error);
-    res.status(500).json({ message: 'Server error during user deletion' });
-  }
-};
-
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
-  getAllUsers,
-  createUser,
-  deleteUser
+  getAllUsers
 };
