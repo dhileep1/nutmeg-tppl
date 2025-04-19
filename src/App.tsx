@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,6 +12,7 @@ import Payroll from "./pages/Payroll";
 import Performance from "./pages/Performance";
 import Leave from "./pages/Leave";
 import NotFound from "./pages/NotFound";
+import PayrollSlipPage from "./pages/PayrollSlipPage";
 
 const queryClient = new QueryClient();
 
@@ -43,49 +43,80 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} />
-      
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
+        }
+      />
+
       {/* Protected Routes */}
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Layout>
-            <Dashboard />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/timesheet" element={
-        <ProtectedRoute>
-          <Layout>
-            <Timesheet />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/payroll" element={
-        <ProtectedRoute>
-          <Layout>
-            <Payroll />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/performance" element={
-        <ProtectedRoute>
-          <Layout>
-            <Performance />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/leave" element={
-        <ProtectedRoute>
-          <Layout>
-            <Leave />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/timesheet"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Timesheet />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/payroll"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Payroll />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/performance"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Performance />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/leave"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Leave />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/view-payroll"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PayrollSlipPage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
       {/* 404 Not Found Route */}
       <Route path="*" element={<NotFound />} />
     </Routes>

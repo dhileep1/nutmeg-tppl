@@ -39,6 +39,7 @@ import {
 import { format, differenceInDays, addDays } from "date-fns";
 import { toast } from "sonner";
 import axios from "axios";
+
 // Mock leave data
 // const leaveData = [
 //   {
@@ -70,13 +71,6 @@ import axios from "axios";
 //   },
 // ];
 
-const leaveBalance = [
-  { leave_type: "Annual Leave", total: 20, used: 5, balance: 15 },
-  { leave_type: "Sick Leave", total: 12, used: 1, balance: 11 },
-  { leave_type: "Casual Leave", total: 6, used: 0, balance: 6 },
-  { leave_type: "Compensatory Off", total: 3, used: 0, balance: 3 },
-];
-
 // Function to get the dates where team members are on leave
 
 const Leave = () => {
@@ -95,7 +89,14 @@ const Leave = () => {
     end_date: new Date(),
     reason: "",
   });
+  const [refresh, setRefresh] = useState(true);
   const [leaveData, setLeaveData] = useState([]);
+  const [leaveBalance, setLeaveBalance] = useState([
+    { leave_type: "Annual Leave", total: 20, used: 0, balance: 20 },
+    { leave_type: "Sick Leave", total: 20, used: 0, balance: 20 },
+    { leave_type: "Casual Leave", total: 20, used: 0, balance: 20 },
+    { leave_type: "Compensatory Off", total: 20, used: 0, balance: 20 },
+  ]);
   const user_id = "U001";
 
   // Get team leave dates for highlighting on calendar
@@ -106,7 +107,26 @@ const Leave = () => {
 
   useEffect(() => {
     fetchLeaveData();
-  }, [leaveData]);
+    axios
+      .get(`http://127.0.0.1:3000/leave_balance/${user_id}`)
+      .then((response) => {
+        const leave_bal_data = response.data.data[0].bal_json;
+        setLeaveBalance((prevState) => {
+          prevState[0].balance = leave_bal_data.annual;
+          prevState[1].balance = leave_bal_data.sick;
+          prevState[2].balance = leave_bal_data.casual;
+          prevState[3].balance = leave_bal_data.compensatory;
+
+          for (var i = 0; i < prevState.length; i++) {
+            prevState[i].used = prevState[i].total - prevState[i].balance;
+          }
+          return prevState;
+        });
+      })
+      .catch((error) => console.log(error));
+  }, [refresh]);
+
+  useEffect(() => {}, [refresh]);
 
   const getTeamLeaveHighlights = () => {
     // Map dates to highlight on calendar
@@ -177,6 +197,7 @@ const Leave = () => {
 
     toast.success("Leave request submitted successfully");
     setIsDialogOpen(false);
+    setRefresh((prevState) => !prevState);
   };
 
   const handleApprove = (id: number) => {
@@ -187,13 +208,15 @@ const Leave = () => {
         console.log("Response", response);
       })
       .catch((error) => console.log(error));
-    toast.success(`Leave request #${id} approved`);
     fetchLeaveData();
+    setRefresh((prevState) => !prevState);
+    toast.success(`Leave request #${id} approved`);
   };
 
   const handleReject = (id: number) => {
     toast.success(`Leave request #${id} rejected`);
     fetchLeaveData();
+    setRefresh((prevState) => !prevState);
   };
 
   // Calendar day rendering to highlight team leave days
