@@ -101,7 +101,7 @@ const Leave = () => {
   // Get team leave dates for highlighting on calendar
   const fetchLeaveData = async () => {
     const response = await axios.get("http://127.0.0.1:3000/leave");
-    setLeaveData((prevState) => response.data.data);
+    setLeaveData(response.data.data);
   };
 
   useEffect(() => {

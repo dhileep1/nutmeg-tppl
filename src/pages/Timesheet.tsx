@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
@@ -26,7 +25,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays } from "lucide-react";
@@ -36,17 +42,17 @@ import { toast } from "sonner";
 const timesheetDataInitial = [
   {
     id: 1,
-    memberName: "John Doe",
+    member_name: "John Doe",
     department: "Development",
-    businessUnitCode: "DEV01",
-    globalBusinessUnitCode: "GDEV01",
-    projectCode: "91635109100",
-    activityCode: "CODING",
-    shiftCode: "REGULAR",
+    business_unit_code: "DEV01",
+    global_business_unit_code: "GDEV01",
+    project_code: "91635109100",
+    activity_code: "CODING",
+    shift_code: "REGULAR",
     hours: 8,
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
     leave: 0,
-    compOff: 0,
+    comp_off: 0,
     status: "Pending",
   },
 ];
@@ -62,32 +68,27 @@ const Timesheet = () => {
     activityCode: "CODING",
     shiftCode: "REGULAR",
     hours: 8,
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split("T")[0],
   });
-  
+
   const isAdmin = user?.role === "admin";
 
   // Get today's date formatted
   const today = format(new Date(), "yyyy-MM-dd");
   const formattedDate = format(new Date(), "EEEE, MMMM do, yyyy");
 
-  useEffect(() => {
-    // In a real application, this would fetch data from the backend
-    // For now, we're just setting the initial data with today's date
-    const fetchDailyTimesheet = async () => {
-      // This would be an API call in a real application
-      // For now, just simulate with the mock data
-      const currentDate = format(selectedDate, "yyyy-MM-dd");
-      
-      // Filter timesheets for the selected date
-      // In a real app, this would be a backend query
-      const filteredSheets = timesheetDataInitial.filter(
-        sheet => format(new Date(sheet.date), "yyyy-MM-dd") === currentDate
-      );
-      
-      setTimesheets(filteredSheets.length > 0 ? filteredSheets : []);
-    };
+  const fetchDailyTimesheet = async () => {
+    const res = await fetch("http://localhost:4000/timesheet");
+    const json = await res.json();
 
+    const currentDate = format(selectedDate, "yyyy-MM-dd");
+
+    console.log("Json Data", json.data);
+
+    setTimesheets(json.data);
+  };
+
+  useEffect(() => {
     fetchDailyTimesheet();
   }, [selectedDate]);
 
@@ -126,35 +127,52 @@ const Timesheet = () => {
   };
 
   const handleHourChange = (value: string) => {
-    setSelectedTimesheet({ 
-      ...selectedTimesheet, 
-      hours: parseInt(value) || 0 
+    setSelectedTimesheet({
+      ...selectedTimesheet,
+      hours: parseInt(value) || 0,
     });
   };
 
   const handleNewEntryChange = (field: string, value: string) => {
     setNewEntry({
       ...newEntry,
-      [field]: field === 'hours' ? (parseInt(value) || 0) : value
+      [field]: field === "hours" ? parseInt(value) || 0 : value,
     });
   };
 
-  const handleAddNewEntry = () => {
+  const handleAddNewEntry = async () => {
     const newTimesheet = {
-      id: timesheets.length > 0 ? Math.max(...timesheets.map(t => t.id)) + 1 : 1,
-      memberName: user?.name || "Current User",
+      member_name: user?.name || "Current User",
       department: "Development",
-      businessUnitCode: "DEV01",
-      globalBusinessUnitCode: "GDEV01",
+      business_unit_code: "DEV01",
+      global_business_unit_code: "GDEV01",
       ...newEntry,
       leave: 0,
-      compOff: 0,
-      status: "Pending"
+      comp_off: 0,
+      status: "Pending",
     };
-    
-    setTimesheets([...timesheets, newTimesheet]);
-    setIsNewEntryDialogOpen(false);
-    toast.success("New timesheet entry added");
+
+    try {
+      const res = await fetch("http://localhost:4000/addsheet", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newTimesheet),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to add timesheet");
+      }
+
+      const saved = await res.json();
+      setTimesheets((prev) => [...prev, saved]);
+      setIsNewEntryDialogOpen(false);
+      toast.success("New timesheet entry added");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add new entry");
+    }
   };
 
   const handleDateChange = (newDate: Date) => {
@@ -185,7 +203,7 @@ const Timesheet = () => {
         </div>
         <div className="flex space-x-3">
           {isAdmin && (
-            <Button 
+            <Button
               variant="outline"
               onClick={handleGenerateProjectCode}
               className="bg-nutmeg-50 text-nutmeg-700 border-nutmeg-200 hover:bg-nutmeg-100"
@@ -193,7 +211,9 @@ const Timesheet = () => {
               Generate Project Code
             </Button>
           )}
-          <Button onClick={() => setIsNewEntryDialogOpen(true)}>Add New Entry</Button>
+          <Button onClick={() => setIsNewEntryDialogOpen(true)}>
+            Add New Entry
+          </Button>
           <Button onClick={handleSubmitAll}>Submit All</Button>
         </div>
       </div>
@@ -202,18 +222,32 @@ const Timesheet = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Daily Timesheet</CardTitle>
-            <CardDescription>
-              {formattedDate}
-            </CardDescription>
+            <CardDescription>{formattedDate}</CardDescription>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={() => handleDateChange(new Date(selectedDate.getTime() - 86400000))}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                handleDateChange(new Date(selectedDate.getTime() - 86400000))
+              }
+            >
               Previous Day
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDateChange(new Date())}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDateChange(new Date())}
+            >
               Today
             </Button>
-            <Button variant="outline" size="sm" onClick={() => handleDateChange(new Date(selectedDate.getTime() + 86400000))}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                handleDateChange(new Date(selectedDate.getTime() + 86400000))
+              }
+            >
               Next Day
             </Button>
           </div>
@@ -241,16 +275,16 @@ const Timesheet = () => {
                 {timesheets.length > 0 ? (
                   timesheets.map((sheet) => (
                     <TableRow key={sheet.id}>
-                      <TableCell className="font-medium">{sheet.memberName}</TableCell>
-                      <TableCell>{sheet.department}</TableCell>
-                      <TableCell>{sheet.businessUnitCode}</TableCell>
-                      <TableCell>{sheet.globalBusinessUnitCode}</TableCell>
-                      <TableCell>{sheet.projectCode}</TableCell>
-                      <TableCell>{sheet.activityCode}</TableCell>
-                      <TableCell>{sheet.shiftCode}</TableCell>
-                      <TableCell className="text-center">{sheet.hours}</TableCell>
-                      <TableCell className="text-center">{sheet.leave}</TableCell>
-                      <TableCell className="text-center">{sheet.compOff}</TableCell>
+                      <TableCell>{sheet.member_name}</TableCell>
+                      <TableCell>{sheet.business_unit_code}</TableCell>
+                      <TableCell>{sheet.global_business_unit_code}</TableCell>
+                      <TableCell>{sheet.project_code}</TableCell>
+                      <TableCell>{sheet.activity_code}</TableCell>
+                      <TableCell>{sheet.shift_code}</TableCell>
+                      <TableCell>{sheet.hours}</TableCell>
+                      <TableCell>{sheet.leave}</TableCell>
+                      <TableCell>{sheet.comp_off}</TableCell>
+                      <TableCell>{sheet.status}</TableCell>
                       <TableCell className="text-center">
                         <Badge
                           className={
@@ -302,7 +336,9 @@ const Timesheet = () => {
                     <TableCell colSpan={12} className="text-center py-6">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <CalendarDays className="h-10 w-10 text-muted" />
-                        <p className="text-lg font-medium">No entries for this date</p>
+                        <p className="text-lg font-medium">
+                          No entries for this date
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           Click "Add New Entry" to create a timesheet for today
                         </p>
@@ -322,14 +358,16 @@ const Timesheet = () => {
           </div>
           {isAdmin && (
             <div className="flex items-center space-x-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
               >
                 Download Report
               </Button>
-              <Button variant="outline" size="sm">Delegate Authority</Button>
+              <Button variant="outline" size="sm">
+                Delegate Authority
+              </Button>
             </div>
           )}
         </CardFooter>
@@ -379,10 +417,12 @@ const Timesheet = () => {
                   <Input
                     type="date"
                     value={selectedTimesheet.date}
-                    onChange={(e) => setSelectedTimesheet({
-                      ...selectedTimesheet,
-                      date: e.target.value
-                    })}
+                    onChange={(e) =>
+                      setSelectedTimesheet({
+                        ...selectedTimesheet,
+                        date: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -437,7 +477,10 @@ const Timesheet = () => {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedTimesheet(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setSelectedTimesheet(null)}
+            >
               Cancel
             </Button>
             <Button onClick={handleSubmitRevision}>Submit</Button>
@@ -464,24 +507,32 @@ const Timesheet = () => {
                 <p className="text-sm font-medium mb-1">Project Code</p>
                 <Select
                   defaultValue={newEntry.projectCode}
-                  onValueChange={(value) => handleNewEntryChange('projectCode', value)}
+                  onValueChange={(value) =>
+                    handleNewEntryChange("projectCode", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="91635109100">91635109100 - Main Project</SelectItem>
-                    <SelectItem value="91635109101">91635109101 - Secondary Project</SelectItem>
-                    <SelectItem value="91635109102">91635109102 - Support</SelectItem>
+                    <SelectItem value="91635109100">
+                      91635109100 - Main Project
+                    </SelectItem>
+                    <SelectItem value="91635109101">
+                      91635109101 - Secondary Project
+                    </SelectItem>
+                    <SelectItem value="91635109102">
+                      91635109102 - Support
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Date</p>
-                <Input 
-                  type="date" 
+                <Input
+                  type="date"
                   value={newEntry.date}
-                  onChange={(e) => handleNewEntryChange('date', e.target.value)}
+                  onChange={(e) => handleNewEntryChange("date", e.target.value)}
                 />
               </div>
             </div>
@@ -491,7 +542,9 @@ const Timesheet = () => {
                 <p className="text-sm font-medium mb-1">Activity</p>
                 <Select
                   defaultValue={newEntry.activityCode}
-                  onValueChange={(value) => handleNewEntryChange('activityCode', value)}
+                  onValueChange={(value) =>
+                    handleNewEntryChange("activityCode", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select activity" />
@@ -509,7 +562,9 @@ const Timesheet = () => {
                 <p className="text-sm font-medium mb-1">Shift</p>
                 <Select
                   defaultValue={newEntry.shiftCode}
-                  onValueChange={(value) => handleNewEntryChange('shiftCode', value)}
+                  onValueChange={(value) =>
+                    handleNewEntryChange("shiftCode", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select shift" />
@@ -530,13 +585,16 @@ const Timesheet = () => {
                 min="0"
                 max="24"
                 value={newEntry.hours}
-                onChange={(e) => handleNewEntryChange('hours', e.target.value)}
+                onChange={(e) => handleNewEntryChange("hours", e.target.value)}
               />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsNewEntryDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsNewEntryDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleAddNewEntry}>Add Entry</Button>
