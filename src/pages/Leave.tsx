@@ -40,39 +40,6 @@ import { format, differenceInDays, addDays } from "date-fns";
 import { toast } from "sonner";
 import axios from "axios";
 
-// Mock leave data
-// const leaveData = [
-//   {
-// id: 1,
-// leave_type: "Annual Leave",
-// startDate: "2025-04-10",
-// end_date: "2025-04-11",
-// days: 2,
-// reason: "Personal",
-// status: "Approved",
-//   },
-//   {
-//     id: 2,
-// leave_type: "Sick Leave",
-// startDate: "2025-02-15",
-// end_date: "2025-02-15",
-// days: 1,
-// reason: "Health issues",
-// status: "Approved",
-//   },
-//   {
-//     id: 3,
-//     leave_type: "Annual Leave",
-//     startDate: "2025-05-20",
-//     end_date: "2025-05-22",
-//     days: 3,
-//     reason: "Family function",
-//     status: "Pending",
-//   },
-// ];
-
-// Function to get the dates where team members are on leave
-
 const Leave = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";

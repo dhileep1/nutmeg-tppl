@@ -77,14 +77,13 @@ app.post("/newleave", async (req, res) => {
     );
 
     const leave_update_result = await pool.query(query, values);
-
     if (leave_update_result.rowCount <= 0) {
       res.status(400).json({ message: "Exceeding leave count" });
       return;
     }
-
     const result = await pool.query(
-      `INSERT INTO leave_table values ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO leave_table (user_id, leave_type, start_date, end_date, days, reason) 
+      VALUES ($1, $2, $3, $4, $5, $6)`,
       [user_id, leave_type, start_date, end_date, parseInt(days), reason]
     );
     res.status(201).json({ message: "created record" });

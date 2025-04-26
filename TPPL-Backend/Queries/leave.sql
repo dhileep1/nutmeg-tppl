@@ -6,16 +6,16 @@ CREATE TABLE leave_table (
     end_date DATE,
     days INT,
     reason TEXT,
-    status VARCHAR(15)
-    ADD fk_user_leave FOREIGN KEY (user_id) REFERENCES user_table (user_id)
+    status VARCHAR(15) DEFAULT "pending"
+    CONSTRAINT fk_user_leave FOREIGN KEY (user_id) REFERENCES user_table (user_id)
 );
 
 CREATE TABLE leave_balance (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(10),
     bal_json JSONB DEFAULT {'annual' : 20, 'sick' : 20, 'casual' : 20, 'compensatory' : 20}
-    ADD fk_user_bal FOREIGN KEY (user_id) REFERENCES user_table (user_id)
-)
+    CONSTRAINT fk_user_bal FOREIGN KEY (user_id) REFERENCES user_table (user_id)
+);
 
 create table payroll_table(
 	basic INTEGER,
