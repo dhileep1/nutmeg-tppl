@@ -71,7 +71,6 @@ const Payroll = () => {
   const [payrollData, setPayRollData] = useState([]);
   const [userPayRollHis, setUserPayRollHis] = useState([]);
   const navigate = useNavigate();
-  const user_id = "U001";
   useEffect(() => {
     axios
       .get("http://127.0.0.1:3000/payroll")
@@ -84,7 +83,7 @@ const Payroll = () => {
 
   useEffect(() => {
     axios
-      .get(`http://127.0.0.1:3000/payroll/${user_id}`)
+      .get(`http://127.0.0.1:3000/payroll/${user.user_id}`)
       .then((response) => {
         setUserPayRollHis(response.data),
           console.log("Payroll history", response.data);

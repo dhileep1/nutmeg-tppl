@@ -105,7 +105,6 @@ const Login = () => {
                       required
                     />
                   </div>
-
                   <div className="grid gap-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="password">Password</Label>
@@ -133,18 +132,9 @@ const Login = () => {
                 >
                   {isLoading ? "Signing In..." : "Sign In"}
                 </Button>
-
-                <div className="mt-4 text-sm text-center text-muted-foreground">
-                  <p>
-                    For demo: use admin@nmsolutions.co.in or
-                    member@nmsolutions.co.in
-                  </p>
-                  <p>Any password and 6-digit OTP will work</p>
-                </div>
               </form>
             )}
           </CardContent>
-
           <CardFooter className="flex flex-col border-t pt-4">
             <p className="text-sm text-muted-foreground">
               Protected by Multi-Factor Authentication

@@ -35,56 +35,49 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays } from "lucide-react";
+import { Activity, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
+import axios from "axios";
 
 // Mock data for the timesheet
-const timesheetDataInitial = [
-  {
-    id: 1,
-    member_name: "John Doe",
-    department: "Development",
-    business_unit_code: "DEV01",
-    global_business_unit_code: "GDEV01",
-    project_code: "91635109100",
-    activity_code: "CODING",
-    shift_code: "REGULAR",
-    hours: 8,
-    date: new Date().toISOString().split("T")[0],
-    leave: 0,
-    comp_off: 0,
-    status: "Pending",
-  },
-];
+// const timesheetDataInitial = [
+//   {
+//     id: 1,
+//     member_name: "John Doe",
+//     department: "Development",
+//     business_unit_code: "DEV01",
+//     global_business_unit_code: "GDEV01",
+//     project_code: "91635109100",
+//     activity_code: "CODING",
+//     shift_code: "REGULAR",
+//     hours: 8,
+//     date: new Date().toISOString().split("T")[0],
+//     leave: 0,
+//     comp_off: 0,
+//     status: "Pending",
+//   },
+// ];
 
 const Timesheet = () => {
   const { user } = useAuth();
-  const [timesheets, setTimesheets] = useState(timesheetDataInitial);
+  const [timesheets, setTimesheets] = useState([]);
   const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
-    projectCode: "91635109100",
-    activityCode: "CODING",
-    shiftCode: "REGULAR",
+    project_code: "91635109100",
+    activity_code: "CODING",
+    shift_code: "REGULAR",
     hours: 8,
     date: new Date().toISOString().split("T")[0],
   });
 
   const isAdmin = user?.role === "admin";
 
-  // Get today's date formatted
-  const today = format(new Date(), "yyyy-MM-dd");
-  const formattedDate = format(new Date(), "EEEE, MMMM do, yyyy");
-
   const fetchDailyTimesheet = async () => {
-    const res = await fetch("http://localhost:4000/timesheet");
-    const json = await res.json();
-
     const currentDate = format(selectedDate, "yyyy-MM-dd");
-
-    console.log("Json Data", json.data);
-
+    const res = await fetch(`http://localhost:3000/timesheet/${currentDate}`);
+    const json = await res.json();
     setTimesheets(json.data);
   };
 
@@ -93,6 +86,10 @@ const Timesheet = () => {
   }, [selectedDate]);
 
   const handleApprove = (id: number) => {
+    axios
+      .patch(`http://127.0.0.1:3000/timesheet/update/${id}/Approved`)
+      .then((response) => console.log(response.data))
+      .catch((error) => console.log(error));
     setTimesheets(
       timesheets.map((sheet) =>
         sheet.id === id ? { ...sheet, status: "Approved" } : sheet
@@ -102,6 +99,10 @@ const Timesheet = () => {
   };
 
   const handleReject = (id: number) => {
+    axios
+      .patch(`http://127.0.0.1:3000/timesheet/update/${id}/Rejected`)
+      .then((response) => console.log(response.data))
+      .catch((error) => console.log(error));
     setTimesheets(
       timesheets.map((sheet) =>
         sheet.id === id ? { ...sheet, status: "Rejected" } : sheet
@@ -111,17 +112,24 @@ const Timesheet = () => {
   };
 
   const handleRevise = (timesheet: any) => {
-    setSelectedTimesheet(timesheet);
+    setSelectedTimesheet({ ...timesheet, status: "Pending" });
   };
 
   const handleSubmitRevision = () => {
-    setTimesheets(
-      timesheets.map((sheet) =>
-        sheet.id === selectedTimesheet.id
-          ? { ...selectedTimesheet, status: "Pending" }
-          : sheet
-      )
-    );
+    axios
+      .put(`http://127.0.0.1:3000/timesheet/revise/${selectedTimesheet.id}`, {
+        hours: selectedTimesheet.hours,
+        date: selectedTimesheet.date,
+        activity_code: selectedTimesheet.activity_code,
+        shift_code: selectedTimesheet.shift_code,
+      })
+      .then((response) => console.log(response.data))
+      .catch((error) => console.log("Error while revising timesheet", error));
+    setTimesheets((prevState) => {
+      return prevState.map((sheet) =>
+        sheet.id === selectedTimesheet.id ? selectedTimesheet : sheet
+      );
+    });
     setSelectedTimesheet(null);
     toast.success("Timesheet submitted for review");
   };
@@ -142,8 +150,7 @@ const Timesheet = () => {
 
   const handleAddNewEntry = async () => {
     const newTimesheet = {
-      member_name: user?.name || "Current User",
-      department: "Development",
+      user_id: user.user_id,
       business_unit_code: "DEV01",
       global_business_unit_code: "GDEV01",
       ...newEntry,
@@ -151,9 +158,9 @@ const Timesheet = () => {
       comp_off: 0,
       status: "Pending",
     };
-
+    console.log("Add Entry", newTimesheet);
     try {
-      const res = await fetch("http://localhost:4000/addsheet", {
+      const res = await fetch("http://localhost:3000/addsheet", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -222,7 +229,9 @@ const Timesheet = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Daily Timesheet</CardTitle>
-            <CardDescription>{formattedDate}</CardDescription>
+            <CardDescription>
+              {format(selectedDate, "EEEE, MMMM do, yyyy")}
+            </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
             <Button
@@ -258,7 +267,6 @@ const Timesheet = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Member Name</TableHead>
-                  <TableHead>Dept</TableHead>
                   <TableHead>BU Code</TableHead>
                   <TableHead>Global BU</TableHead>
                   <TableHead>Project</TableHead>
@@ -275,10 +283,16 @@ const Timesheet = () => {
                 {timesheets.length > 0 ? (
                   timesheets.map((sheet) => (
                     <TableRow key={sheet.id}>
-                      <TableCell>{sheet.member_name}</TableCell>
+                      <TableCell>{sheet.user_name}</TableCell>
                       <TableCell>{sheet.business_unit_code}</TableCell>
                       <TableCell>{sheet.global_business_unit_code}</TableCell>
-                      <TableCell>{sheet.project_code}</TableCell>
+                      <TableCell>
+                        <input
+                          type="text"
+                          value={sheet.project_code}
+                          style={{ width: "5.75rem" }}
+                        />
+                      </TableCell>
                       <TableCell>{sheet.activity_code}</TableCell>
                       <TableCell>{sheet.shift_code}</TableCell>
                       <TableCell>{sheet.hours}</TableCell>
@@ -393,11 +407,11 @@ const Timesheet = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium mb-1">Member</p>
-                  <p>{selectedTimesheet.memberName}</p>
+                  <p>{selectedTimesheet.user_name}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1">Project</p>
-                  <p>{selectedTimesheet.projectCode}</p>
+                  <p>{selectedTimesheet.project_code}</p>
                 </div>
               </div>
 
@@ -431,11 +445,11 @@ const Timesheet = () => {
                 <div>
                   <p className="text-sm font-medium mb-1">Activity</p>
                   <Select
-                    defaultValue={selectedTimesheet.activityCode}
+                    defaultValue={selectedTimesheet.activity_code}
                     onValueChange={(value) =>
                       setSelectedTimesheet({
                         ...selectedTimesheet,
-                        activityCode: value,
+                        activity_code: value,
                       })
                     }
                   >
@@ -458,7 +472,7 @@ const Timesheet = () => {
                     onValueChange={(value) =>
                       setSelectedTimesheet({
                         ...selectedTimesheet,
-                        shiftCode: value,
+                        shift_code: value,
                       })
                     }
                   >
@@ -506,7 +520,7 @@ const Timesheet = () => {
               <div>
                 <p className="text-sm font-medium mb-1">Project Code</p>
                 <Select
-                  defaultValue={newEntry.projectCode}
+                  defaultValue={newEntry.project_code}
                   onValueChange={(value) =>
                     handleNewEntryChange("projectCode", value)
                   }
@@ -541,7 +555,7 @@ const Timesheet = () => {
               <div>
                 <p className="text-sm font-medium mb-1">Activity</p>
                 <Select
-                  defaultValue={newEntry.activityCode}
+                  defaultValue={newEntry.activity_code}
                   onValueChange={(value) =>
                     handleNewEntryChange("activityCode", value)
                   }
@@ -561,7 +575,7 @@ const Timesheet = () => {
               <div>
                 <p className="text-sm font-medium mb-1">Shift</p>
                 <Select
-                  defaultValue={newEntry.shiftCode}
+                  defaultValue={newEntry.shift_code}
                   onValueChange={(value) =>
                     handleNewEntryChange("shiftCode", value)
                   }
