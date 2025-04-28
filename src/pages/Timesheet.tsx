@@ -76,7 +76,7 @@ const Timesheet = () => {
 
   const fetchDailyTimesheet = async () => {
     const currentDate = format(selectedDate, "yyyy-MM-dd");
-    const res = await fetch(`http://localhost:3000/timesheet/${currentDate}`);
+    const res = await fetch(`http://localhost:3000/timesheet/`);
     const json = await res.json();
     setTimesheets(json.data);
   };
