@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -64,7 +63,7 @@
   .sidebar-menu-item.active {
     @apply bg-sidebar-accent;
   }
-  
+
   .sidebar-menu-item svg {
     @apply mr-3 h-5 w-5;
   }

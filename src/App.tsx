@@ -39,8 +39,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
-
+  const { user, isAuthenticated } = useAuth();
   return (
     <Routes>
       <Route
@@ -49,7 +48,6 @@ const AppRoutes = () => {
           isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />
         }
       />
-
       {/* Protected Routes */}
       <Route
         path="/dashboard"
@@ -61,7 +59,6 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
       <Route
         path="/timesheet"
         element={

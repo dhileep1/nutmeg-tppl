@@ -108,7 +108,7 @@ const Leave = () => {
   useEffect(() => {
     fetchLeaveData();
     axios
-      .get(`http://127.0.0.1:3000/leave_balance/${user_id}`)
+      .get(`http://127.0.0.1:3000/leave_balance/${user.user_id}`)
       .then((response) => {
         const leave_bal_data = response.data.data[0].bal_json;
         setLeaveBalance((prevState) => {
@@ -168,7 +168,7 @@ const Leave = () => {
 
     // Add to leaveData (in a real app, this would be saved to the database)
     const newLeave = {
-      user_id,
+      user_id: user.user_id,
       leave_type: leaveRequestData.leave_type,
       start_date: format(leaveRequestData.start_date, "yyyy-MM-dd"),
       end_date: format(leaveRequestData.end_date, "yyyy-MM-dd"),
@@ -214,9 +214,15 @@ const Leave = () => {
   };
 
   const handleReject = (id: number) => {
-    toast.success(`Leave request #${id} rejected`);
+    axios
+      .patch(`http://127.0.0.1:3000/leave/reject/${id}`)
+      .then((response) => {
+        console.log("Response", response);
+      })
+      .catch((error) => console.log(error));
     fetchLeaveData();
     setRefresh((prevState) => !prevState);
+    toast.success(`Leave request #${id} rejected`);
   };
 
   // Calendar day rendering to highlight team leave days
@@ -360,7 +366,6 @@ const Leave = () => {
                     </div>
                   </div>
                 </div>
-
                 <div>
                   <div className="flex justify-between">
                     <Label>Reason for Leave</Label>
