@@ -178,10 +178,12 @@ app.get("/payroll/:user_id", async (req, res) => {
 
 /* -- Timesheet Modules -- */
 
-app.get("/timesheet/", async (req, res) => {
+app.get("/timesheet/:id", async (req, res) => {
+  const user_id = String(req.params.id);
   try {
     const result = await pool.query(
-      "SELECT u.user_name, t.* from user_table u inner join timesheets t on u.user_id = t.user_id"
+      "SELECT u.user_name, t.* from user_table u inner join timesheets t on u.user_id = t.user_id where u.user_id = $1",
+      [user_id]
     );
     res.status(200).json({ message: "success", data: result.rows });
   } catch (error) {

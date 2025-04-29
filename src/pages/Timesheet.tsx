@@ -76,7 +76,7 @@ const Timesheet = () => {
 
   const fetchDailyTimesheet = async () => {
     const currentDate = format(selectedDate, "yyyy-MM-dd");
-    const res = await fetch(`http://localhost:3000/timesheet/`);
+    const res = await fetch(`http://localhost:3000/timesheet/${user.user_id}`);
     const json = await res.json();
     setTimesheets(json.data);
   };
@@ -280,7 +280,7 @@ const Timesheet = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {timesheets.length > 0 ? (
+                {timesheets?.length > 0 ? (
                   timesheets.map((sheet) => (
                     <TableRow key={sheet.id}>
                       <TableCell>{sheet.user_name}</TableCell>
