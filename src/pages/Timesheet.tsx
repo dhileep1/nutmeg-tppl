@@ -165,39 +165,10 @@ const Timesheet = () => {
   };
 
   const handleNewEntryChange = (field: string, value: string) => {
-    if (field === "start_time") {
-      // When start_time changes, update end_time to be 1 hour later
-      const startHour = parseInt(value.split(":")[0]);
-      const startMinute = parseInt(value.split(":")[1]);
-      let endHour = startHour + 1;
-      
-      // Make sure end time doesn't exceed 5 PM
-      if (endHour > 17) endHour = 17;
-      
-      const endTime = `${endHour.toString().padStart(2, '0')}:${startMinute.toString().padStart(2, '0')}`;
-      
-      setNewEntry({
-        ...newEntry,
-        [field]: value,
-        end_time: endTime
-      });
-    } else if (field === "end_time") {
-      // When end_time changes, calculate hours
-      const startTime = parse(newEntry.start_time, "HH:mm", new Date());
-      const endTime = parse(value, "HH:mm", new Date());
-      const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-      
-      setNewEntry({
-        ...newEntry,
-        [field]: value,
-        hours: hours
-      });
-    } else {
-      setNewEntry({
-        ...newEntry,
-        [field]: field === "hours" ? parseInt(value) || 0 : value,
-      });
-    }
+    setNewEntry({
+      ...newEntry,
+      [field]: field === "hours" ? parseInt(value) || 0 : value,
+    });
   };
 
   const handleAddNewEntry = async () => {
@@ -309,21 +280,23 @@ const Timesheet = () => {
     const formattedStartMinute = ((startHour % 1) * 60).toString().padStart(2, '0');
     const startTime = `${formattedStartHour}:${formattedStartMinute}`;
     
-    // Calculate end time (1 hour later or until 5 PM)
-    let endHour = startHour + 1;
+    // Calculate end time (1 hour or 30 min later, depending on timeBlockUnit)
+    let endHour = startHour + slotUnit;
     if (endHour > 17) endHour = 17;
     
     const formattedEndHour = Math.floor(endHour).toString().padStart(2, '0');
     const formattedEndMinute = ((endHour % 1) * 60).toString().padStart(2, '0');
     const endTime = `${formattedEndHour}:${formattedEndMinute}`;
     
-    // Update new entry state
+    // Update new entry state with pre-filled time values based on clicked time slot
     setNewEntry({
-      ...newEntry,
+      project_code: "91635109100",
+      activity_code: "CODING",
+      shift_code: "REGULAR",
+      hours: slotUnit,
       date: formattedDate,
       start_time: startTime,
-      end_time: endTime,
-      hours: endHour - startHour
+      end_time: endTime
     });
     
     setIsNewEntryDialogOpen(true);
@@ -406,17 +379,17 @@ const Timesheet = () => {
   const getActivityColor = (activityCode: string) => {
     switch (activityCode) {
       case "CODING":
-        return "bg-blue-500 text-white";
+        return "bg-blue-600 text-white";
       case "DESIGN":
-        return "bg-purple-500 text-white";
+        return "bg-purple-600 text-white";
       case "TESTING":
-        return "bg-green-500 text-white";
+        return "bg-green-600 text-white";
       case "MEETING":
-        return "bg-amber-500 text-white";
+        return "bg-amber-600 text-white";
       case "OTHER":
-        return "bg-gray-500 text-white";
+        return "bg-gray-600 text-white";
       default:
-        return "bg-cyan-500 text-white";
+        return "bg-cyan-600 text-white";
     }
   };
 
@@ -663,112 +636,41 @@ const Timesheet = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1">Project</p>
-                  <p>{selectedTimesheet.project_code}</p>
+                  <Select
+                    value={selectedTimesheet.project_code}
+                    onValueChange={(value) =>
+                      setSelectedTimesheet({
+                        ...selectedTimesheet,
+                        project_code: value,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="91635109100">
+                        91635109100 - Main Project
+                      </SelectItem>
+                      <SelectItem value="91635109101">
+                        91635109101 - Secondary Project
+                      </SelectItem>
+                      <SelectItem value="91635109102">
+                        91635109102 - Support
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <div>
                   <p className="text-sm font-medium mb-1">Start Time</p>
-                  <Select
-                    value={selectedTimesheet.start_time}
-                    onValueChange={(value) => {
-                      // When start time changes, ensure end time is valid
-                      const currentEndTime = selectedTimesheet.end_time;
-                      if (value >= currentEndTime) {
-                        // If start time is >= end time, set end time to start time + 30 min
-                        const newStartHour = parseInt(value.split(":")[0]);
-                        const newStartMinute = parseInt(value.split(":")[1]);
-                        let newEndHour = newStartHour;
-                        let newEndMinute = newStartMinute + 30;
-                        
-                        if (newEndMinute >= 60) {
-                          newEndHour += 1;
-                          newEndMinute -= 60;
-                        }
-                        
-                        if (newEndHour > 17 || (newEndHour === 17 && newEndMinute > 0)) {
-                          newEndHour = 17;
-                          newEndMinute = 0;
-                        }
-                        
-                        const newEndTime = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`;
-                        
-                        setSelectedTimesheet({
-                          ...selectedTimesheet,
-                          start_time: value,
-                          end_time: newEndTime
-                        });
-                      } else {
-                        setSelectedTimesheet({
-                          ...selectedTimesheet,
-                          start_time: value
-                        });
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select start time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="09:00">09:00 AM</SelectItem>
-                      <SelectItem value="09:30">09:30 AM</SelectItem>
-                      <SelectItem value="10:00">10:00 AM</SelectItem>
-                      <SelectItem value="10:30">10:30 AM</SelectItem>
-                      <SelectItem value="11:00">11:00 AM</SelectItem>
-                      <SelectItem value="11:30">11:30 AM</SelectItem>
-                      <SelectItem value="12:00">12:00 PM</SelectItem>
-                      <SelectItem value="12:30">12:30 PM</SelectItem>
-                      <SelectItem value="13:00">1:00 PM</SelectItem>
-                      <SelectItem value="13:30">1:30 PM</SelectItem>
-                      <SelectItem value="14:00">2:00 PM</SelectItem>
-                      <SelectItem value="14:30">2:30 PM</SelectItem>
-                      <SelectItem value="15:00">3:00 PM</SelectItem>
-                      <SelectItem value="15:30">3:30 PM</SelectItem>
-                      <SelectItem value="16:00">4:00 PM</SelectItem>
-                      <SelectItem value="16:30">4:30 PM</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="font-medium">{selectedTimesheet.start_time}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1">End Time</p>
-                  <Select
-                    value={selectedTimesheet.end_time}
-                    onValueChange={(value) => {
-                      // Validate that end time is after start time
-                      if (value <= selectedTimesheet.start_time) {
-                        toast.error("End time must be after start time");
-                        return;
-                      }
-                      
-                      setSelectedTimesheet({
-                        ...selectedTimesheet,
-                        end_time: value
-                      });
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select end time" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="09:30">09:30 AM</SelectItem>
-                      <SelectItem value="10:00">10:00 AM</SelectItem>
-                      <SelectItem value="10:30">10:30 AM</SelectItem>
-                      <SelectItem value="11:00">11:00 AM</SelectItem>
-                      <SelectItem value="11:30">11:30 AM</SelectItem>
-                      <SelectItem value="12:00">12:00 PM</SelectItem>
-                      <SelectItem value="12:30">12:30 PM</SelectItem>
-                      <SelectItem value="13:00">1:00 PM</SelectItem>
-                      <SelectItem value="13:30">1:30 PM</SelectItem>
-                      <SelectItem value="14:00">2:00 PM</SelectItem>
-                      <SelectItem value="14:30">2:30 PM</SelectItem>
-                      <SelectItem value="15:00">3:00 PM</SelectItem>
-                      <SelectItem value="15:30">3:30 PM</SelectItem>
-                      <SelectItem value="16:00">4:00 PM</SelectItem>
-                      <SelectItem value="16:30">4:30 PM</SelectItem>
-                      <SelectItem value="17:00">5:00 PM</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <p className="font-medium">{selectedTimesheet.end_time}</p>
                 </div>
               </div>
 
@@ -873,7 +775,7 @@ const Timesheet = () => {
           <DialogHeader>
             <DialogTitle>Add New Timesheet Session</DialogTitle>
             <DialogDescription>
-              Create a new timesheet session for {newEntry.date ? format(parseISO(newEntry.date), "EEEE, MMMM d, yyyy") : "today"}
+              Create a new timesheet session for {newEntry.date ? format(parseISO(newEntry.date), "EEEE, MMMM d, yyyy") : "today"} from {newEntry.start_time} to {newEntry.end_time}
             </DialogDescription>
           </DialogHeader>
 
@@ -905,72 +807,25 @@ const Timesheet = () => {
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Date</p>
-                <Input
-                  type="date"
-                  value={newEntry.date}
-                  onChange={(e) => handleNewEntryChange("date", e.target.value)}
-                />
+                <p className="text-sm font-medium">{newEntry.date ? format(parseISO(newEntry.date), "MMMM d, yyyy") : ""}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium mb-1">Start Time</p>
-                <Select
-                  value={newEntry.start_time}
-                  onValueChange={(value) => handleNewEntryChange("start_time", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select start time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="09:00">09:00 AM</SelectItem>
-                    <SelectItem value="09:30">09:30 AM</SelectItem>
-                    <SelectItem value="10:00">10:00 AM</SelectItem>
-                    <SelectItem value="10:30">10:30 AM</SelectItem>
-                    <SelectItem value="11:00">11:00 AM</SelectItem>
-                    <SelectItem value="11:30">11:30 AM</SelectItem>
-                    <SelectItem value="12:00">12:00 PM</SelectItem>
-                    <SelectItem value="12:30">12:30 PM</SelectItem>
-                    <SelectItem value="13:00">1:00 PM</SelectItem>
-                    <SelectItem value="13:30">1:30 PM</SelectItem>
-                    <SelectItem value="14:00">2:00 PM</SelectItem>
-                    <SelectItem value="14:30">2:30 PM</SelectItem>
-                    <SelectItem value="15:00">3:00 PM</SelectItem>
-                    <SelectItem value="15:30">3:30 PM</SelectItem>
-                    <SelectItem value="16:00">4:00 PM</SelectItem>
-                    <SelectItem value="16:30">4:30 PM</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-sm font-medium mb-1">Time Slot</p>
+                <p className="text-sm font-medium">{newEntry.start_time} - {newEntry.end_time}</p>
               </div>
               <div>
-                <p className="text-sm font-medium mb-1">End Time</p>
-                <Select
-                  value={newEntry.end_time}
-                  onValueChange={(value) => handleNewEntryChange("end_time", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select end time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="09:30">09:30 AM</SelectItem>
-                    <SelectItem value="10:00">10:00 AM</SelectItem>
-                    <SelectItem value="10:30">10:30 AM</SelectItem>
-                    <SelectItem value="11:00">11:00 AM</SelectItem>
-                    <SelectItem value="11:30">11:30 AM</SelectItem>
-                    <SelectItem value="12:00">12:00 PM</SelectItem>
-                    <SelectItem value="12:30">12:30 PM</SelectItem>
-                    <SelectItem value="13:00">1:00 PM</SelectItem>
-                    <SelectItem value="13:30">1:30 PM</SelectItem>
-                    <SelectItem value="14:00">2:00 PM</SelectItem>
-                    <SelectItem value="14:30">2:30 PM</SelectItem>
-                    <SelectItem value="15:00">3:00 PM</SelectItem>
-                    <SelectItem value="15:30">3:30 PM</SelectItem>
-                    <SelectItem value="16:00">4:00 PM</SelectItem>
-                    <SelectItem value="16:30">4:30 PM</SelectItem>
-                    <SelectItem value="17:00">5:00 PM</SelectItem>
-                  </SelectContent>
-                </Select>
+                <p className="text-sm font-medium mb-1">Duration</p>
+                <p className="text-sm font-medium">
+                  {(() => {
+                    const startTime = parse(newEntry.start_time, "HH:mm", new Date());
+                    const endTime = parse(newEntry.end_time, "HH:mm", new Date());
+                    const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+                  })()}
+                </p>
               </div>
             </div>
 
@@ -1032,3 +887,4 @@ const Timesheet = () => {
 };
 
 export default Timesheet;
+
