@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { format, startOfWeek, addDays, isSameDay, parse, parseISO, isWithinInterval, addHours } from "date-fns";
@@ -55,18 +54,18 @@ const Timesheet = () => {
     start_time: "09:00",
     end_time: "10:00"
   });
-  const [timeBlockUnit, setTimeBlockUnit] = useState<"30min" | "1hour">("1hour");
   const [dragStart, setDragStart] = useState<{day: Date, hour: number} | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{start: number, end: number} | null>(null);
 
   const isAdmin = user?.role === "admin";
   
-  // Generate time slots based on the selected unit
-  const timeSlots = [];
-  const slotCount = timeBlockUnit === "30min" ? 16 : 8; // 16 half-hour blocks or 8 hour blocks
-  const slotUnit = timeBlockUnit === "30min" ? 0.5 : 1;
+  // Fixed to 1-hour blocks
+  const slotCount = 8; // 8 hour blocks for 9AM-5PM
+  const slotUnit = 1; // 1 hour per block
   
+  // Generate time slots
+  const timeSlots = [];
   for (let i = 0; i < slotCount; i++) {
     const hour = Math.floor(9 + (i * slotUnit));
     const minute = ((i * slotUnit) % 1) * 60;
@@ -280,7 +279,7 @@ const Timesheet = () => {
     const formattedStartMinute = ((startHour % 1) * 60).toString().padStart(2, '0');
     const startTime = `${formattedStartHour}:${formattedStartMinute}`;
     
-    // Calculate end time (1 hour or 30 min later, depending on timeBlockUnit)
+    // Calculate end time (1 hour later)
     let endHour = startHour + slotUnit;
     if (endHour > 17) endHour = 17;
     
@@ -349,12 +348,8 @@ const Timesheet = () => {
     const hours = parseFloat(entry.hours || 1);
     const endTime = startTime + hours;
     
-    // Calculate how many time slots this spans
-    if (timeBlockUnit === "30min") {
-      return Math.ceil(hours * 2); // 2 slots per hour for 30-min blocks
-    } else {
-      return Math.ceil(hours); // 1 slot per hour for 1-hour blocks
-    }
+    // Calculate how many time slots this spans (fixed at 1 hour per slot)
+    return Math.ceil(hours);
   };
 
   // Function to get the abbreviated activity name for display
@@ -438,18 +433,6 @@ const Timesheet = () => {
           </p>
         </div>
         <div className="flex space-x-3">
-          <Select 
-            value={timeBlockUnit} 
-            onValueChange={(value: "30min" | "1hour") => setTimeBlockUnit(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Time Block Unit" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30min">30 Minutes</SelectItem>
-              <SelectItem value="1hour">1 Hour</SelectItem>
-            </SelectContent>
-          </Select>
           <Button onClick={handleSubmitAll}>Submit Week</Button>
         </div>
       </div>
@@ -557,30 +540,9 @@ const Timesheet = () => {
                       }).filter(Boolean)}
                       
                       <TableCell className="text-center">
-                        <div className="flex flex-col items-center">
-                          <Badge variant={totalHours >= 8 ? "default" : "outline"}>
-                            {totalHours.toFixed(1)} / 8 hrs
-                          </Badge>
-                          {!isAddDisabled && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="mt-1"
-                              onClick={() => {
-                                setNewEntry({
-                                  ...newEntry,
-                                  date: format(day, "yyyy-MM-dd"),
-                                  start_time: "09:00",
-                                  end_time: "10:00",
-                                  hours: 1
-                                });
-                                setIsNewEntryDialogOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-1" /> Add
-                            </Button>
-                          )}
-                        </div>
+                        <Badge variant={totalHours >= 8 ? "default" : "outline"}>
+                          {totalHours.toFixed(1)} / 8 hrs
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
@@ -887,4 +849,3 @@ const Timesheet = () => {
 };
 
 export default Timesheet;
-
