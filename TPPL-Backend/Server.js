@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import { pool } from "./Database.js";
@@ -205,14 +206,18 @@ app.post("/addsheet", async (req, res) => {
     leave,
     comp_off,
     status,
+    start_time,
+    end_time
   } = req.body;
+  
   console.log("addsheet", req.body);
   try {
     const result = await pool.query(
       `INSERT INTO timesheets (
         user_id, business_unit_code, global_business_unit_code,
-        project_code, activity_code, shift_code, hours, date, leave, comp_off, status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+        project_code, activity_code, shift_code, hours, date, leave, comp_off, status,
+        start_time, end_time
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
       [
         user_id,
         business_unit_code,
@@ -225,6 +230,8 @@ app.post("/addsheet", async (req, res) => {
         leave,
         comp_off,
         status || "Pending",
+        start_time,
+        end_time
       ]
     );
     res.status(201).json(result.rows[0]);
@@ -246,17 +253,18 @@ app.patch("/timesheet/update/:id/:status", async (req, res) => {
 
 app.put("/timesheet/revise/:id", async (req, res) => {
   const id = req.params.id;
-  const { hours, date, activity_code, shift_code } = req.body;
+  const { hours, date, activity_code, shift_code, start_time, end_time } = req.body;
   console.log(req.body);
   try {
     const response = await pool.query(
-      "update timesheets set hours = $1, date = $2, activity_code = $3, shift_code = $4, status = 'Pending' where id = $5",
-      [hours, date, activity_code, shift_code, id]
+      "UPDATE timesheets SET hours = $1, date = $2, activity_code = $3, shift_code = $4, status = 'Pending', start_time = $5, end_time = $6 WHERE id = $7",
+      [hours, date, activity_code, shift_code, start_time, end_time, id]
     );
     return res
       .status(200)
       .json({ message: "Timesheet has been revised successfully" });
   } catch (error) {
+    console.error("Error while updating revised timesheet:", error);
     return res
       .status(500)
       .json({ message: "Error while updating revised timesheet" });
