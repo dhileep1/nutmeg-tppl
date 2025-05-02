@@ -4,7 +4,7 @@ create table user_table (
     user_name varchar(30),
     dept varchar(30),
     pan_card varchar(25),
-    designation varchar(30), 
+    designation varchar(30),
     join_date date
 );
 
