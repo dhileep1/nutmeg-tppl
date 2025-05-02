@@ -1,3 +1,4 @@
+
 create table user_table (
     user_id varchar(10) PRIMARY KEY,
     email varchar(60) UNIQUE,
@@ -29,7 +30,7 @@ CREATE TABLE leave_table (
 CREATE TABLE leave_balance (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(10) UNIQUE,
-    bal_json JSONB DEFAULT {'annual' : 20, 'sick' : 20, 'casual' : 20, 'compensatory' : 20}
+    bal_json JSONB DEFAULT {'annual' : 20, 'sick' : 20, 'casual' : 20, 'compensatory' : 20},
     CONSTRAINT fk_user_bal FOREIGN KEY (user_id) REFERENCES user_table (user_id)
 );
 
@@ -58,5 +59,7 @@ CREATE TABLE timesheets (
   leave NUMERIC,
   comp_off NUMERIC,
   status varchar(20) DEFAULT 'Pending',
+  start_time TIME DEFAULT '09:00:00',
+  end_time TIME DEFAULT '17:00:00',
   CONSTRAINT fk_user_time FOREIGN KEY (user_id) REFERENCES user_table(user_id)
 );
