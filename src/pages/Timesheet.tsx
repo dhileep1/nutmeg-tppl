@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
-import TableCell1 from "@/components/ui/table-cell";
+import TimeBlockCell from "@/components/ui/table-cell";
+import UserSelector from "@/components/ui/user-selector";
 import {
   format,
   startOfWeek,
@@ -55,14 +57,13 @@ const Timesheet = () => {
   const [emptyTimeSheet, setEmptyTimeSheet] = useState(
     Array.from({ length: 7 }, () => Array.from({ length: 8 }, () => null))
   );
-  const [formattedTimeSheets, setFormattedTimeSheets] =
-    useState(emptyTimeSheet);
+  const [formattedTimeSheets, setFormattedTimeSheets] = useState(emptyTimeSheet);
   const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(
     startOfWeek(new Date(), { weekStartsOn: 1 })
   ); // Monday
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
-  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     project_code: "91635109100",
     activity_code: "CODING",
@@ -82,6 +83,11 @@ const Timesheet = () => {
     start: number;
     end: number;
   } | null>(null);
+  
+  // Admin-specific states
+  const [allUsers, setAllUsers] = useState<{ user_id: string; name: string }[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>(user?.user_id || "");
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   const isAdmin = user?.role === "admin";
 
@@ -105,11 +111,31 @@ const Timesheet = () => {
     weekDays.push(addDays(currentWeekStart, i));
   }
 
+  // Fetch all users for admin selector
+  useEffect(() => {
+    if (isAdmin) {
+      setIsLoadingUsers(true);
+      fetch("http://localhost:3000/users")
+        .then((res) => res.json())
+        .then((data) => {
+          setAllUsers(data.data || []);
+          setIsLoadingUsers(false);
+        })
+        .catch((err) => {
+          console.error("Error loading users:", err);
+          setIsLoadingUsers(false);
+          toast.error("Failed to load users");
+        });
+    }
+  }, [isAdmin]);
+
   const fetchWeeklyTimesheet = async () => {
     try {
+      // If admin has selected a user, get that user's timesheet
+      const userId = isAdmin && selectedUserId ? selectedUserId : user.user_id;
       const start_date = format(currentWeekStart, "yyyy-MM-dd");
       const res = await fetch(
-        `http://localhost:3000/timesheet/${user.user_id}/${start_date}`
+        `http://localhost:3000/timesheet/${userId}/${start_date}`
       );
       const json = await res.json();
       setTimesheets(json.data || []);
@@ -121,7 +147,7 @@ const Timesheet = () => {
 
   useEffect(() => {
     fetchWeeklyTimesheet();
-  }, [currentWeekStart, refresh]);
+  }, [currentWeekStart, refresh, selectedUserId]);
 
   // Mapping timesheets to formatted grid structure
   useEffect(() => {
@@ -207,7 +233,7 @@ const Timesheet = () => {
   console.log("Selected Timesheet", selectedTimesheet);
 
   const handleEdit = (id: any, day: Date, startHour: number) => {
-    setEditDialogOpen(true);
+    setIsEditDialogOpen(true);
     let session;
     for (let i = 0; i < timesheets.length; i++) {
       if (timesheets[i].id === id) {
@@ -254,7 +280,7 @@ const Timesheet = () => {
         console.log(response.data);
         fetchWeeklyTimesheet();
         toast.success("Timesheet submitted for review");
-        setEditDialogOpen(false);
+        setIsEditDialogOpen(false);
       })
       .catch((error) => console.log("Error while revising timesheet", error));
   };
@@ -318,8 +344,11 @@ const Timesheet = () => {
       return;
     }
 
+    // Use the current user ID or the selected user ID if admin
+    const userId = isAdmin && selectedUserId ? selectedUserId : user.user_id;
+
     const newTimesheet = {
-      user_id: user.user_id,
+      user_id: userId,
       business_unit_code: "DEV01",
       global_business_unit_code: "GDEV01",
       project_code: newEntry.project_code,
@@ -372,12 +401,19 @@ const Timesheet = () => {
 
   const handleSubmitAll = () => {
     const start_date = format(currentWeekStart, "yyyy-MM-dd");
+    const userId = isAdmin && selectedUserId ? selectedUserId : user.user_id;
+    
     axios
-      .patch(`http://localhost:3000/timesheet/update_week/:${start_date}`)
-      .then((response) => console.log("Response", response))
-      .catch((error) => console.log("Error", error));
-    toast.success("All pending timesheets submitted successfully");
-    setRefresh((prevState) => !prevState);
+      .patch(`http://localhost:3000/timesheet/update_week/${userId}/${start_date}`)
+      .then((response) => {
+        console.log("Response", response);
+        toast.success("All pending timesheets submitted successfully");
+        setRefresh((prevState) => !prevState);
+      })
+      .catch((error) => {
+        console.log("Error", error);
+        toast.error("Failed to submit timesheets");
+      });
   };
 
   // Handle clicking on a time cell to open new entry dialog
@@ -471,6 +507,11 @@ const Timesheet = () => {
     return isSameDay(day, new Date());
   };
 
+  // Handle user selection (for admin only)
+  const handleUserSelection = (userId: string) => {
+    setSelectedUserId(userId);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -493,16 +534,25 @@ const Timesheet = () => {
               Week of {format(currentWeekStart, "MMMM d, yyyy")}
             </CardDescription>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
-              Previous Week
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleCurrentWeek}>
-              Current Week
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleNextWeek}>
-              Next Week
-            </Button>
+          <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
+            {isAdmin && (
+              <UserSelector 
+                users={allUsers}
+                selectedUserId={selectedUserId}
+                onSelectUser={handleUserSelection}
+              />
+            )}
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
+                Previous Week
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCurrentWeek}>
+                Current Week
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleNextWeek}>
+                Next Week
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -539,7 +589,8 @@ const Timesheet = () => {
                             if (session) {
                               totalHours += 1;
                               return (
-                                <TableCell1
+                                <TimeBlockCell
+                                  key={slotIndex}
                                   session={session}
                                   slotIndex={slotIndex}
                                   getActivityColor={getActivityColor}
@@ -547,7 +598,7 @@ const Timesheet = () => {
                                     handleEdit(session.id, day, hour)
                                   }
                                   onDelete={() => handleDelete(session.id)}
-                                ></TableCell1>
+                                />
                               );
                             } else {
                               // Empty cell that can be clicked to add a session
@@ -561,7 +612,6 @@ const Timesheet = () => {
                             }
                           })
                           .filter(Boolean)}
-                        {/* Time slot cells */}
                         <TableCell className="text-center">
                           <Badge
                             variant={totalHours >= 8 ? "default" : "outline"}
@@ -601,7 +651,7 @@ const Timesheet = () => {
       </Card>
 
       {/* Session Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Timesheet Session</DialogTitle>
@@ -741,7 +791,7 @@ const Timesheet = () => {
               <Button
                 variant="outline"
                 className="mr-2"
-                onClick={() => setEditDialogOpen(false)}
+                onClick={() => setIsEditDialogOpen(false)}
               >
                 Cancel
               </Button>
@@ -891,72 +941,3 @@ const Timesheet = () => {
   );
 };
 export default Timesheet;
-
-{
-  /* {Array.from({ length: slotCount })
-                        .map((_, slotIndex) => {
-                          const hour = 9 + slotIndex * slotUnit;
-                          const isOccupied = isTimeSlotOccupied(day, hour);
-                          const isSessionStart = isStartOfSession(day, hour);
-                          const session = isSessionStart
-                            ? getSessionAtTimeSlot(day, hour)
-                            : null;
-                          const colSpan = session
-                            ? getSessionColSpan(session)
-                            : 1;
-                          if (isSessionStart) {
-                            return (
-                              <TableCell
-                                key={slotIndex}
-                                colSpan={colSpan}
-                                className={`relative p-0 m-0 h-12 ${getActivityColor(
-                                  session.activity_code
-                                )}`}
-                                onClick={() => handleRevise(session)}
-                              >
-                                <div className="flex items-center justify-between px-2 h-full cursor-pointer">
-                                  <span className="font-bold">
-                                    {getActivityAbbreviation(
-                                      session.activity_code
-                                    )}
-                                  </span>
-                                  <span className="text-xs whitespace-nowrap">
-                                    {session.start_time?.substring(0, 5)}-
-                                    {format(
-                                      addHours(
-                                        parse(
-                                          session.start_time.substring(0, 5),
-                                          "HH:mm",
-                                          new Date()
-                                        ),
-                                        parseFloat(session.hours)
-                                      ),
-                                      "HH:mm"
-                                    )}
-                                  </span>
-                                </div>
-                              </TableCell>
-                            );
-                          } else if (!isOccupied) {
-                            // Empty cell that can be clicked to add a session
-                            return (
-                              <TableCell
-                                key={slotIndex}
-                                className="p-0 m-0 h-12 border cursor-pointer hover:bg-gray-100"
-                                onClick={() =>
-                                  !isAddDisabled &&
-                                  handleTimeSlotClick(day, hour)
-                                }
-                              >
-                                {isAddDisabled && (
-                                  <div className="w-full h-full bg-gray-100 opacity-50"></div>
-                                )}
-                              </TableCell>
-                            );
-                          } else {
-                            // Skip cells that are covered by a session's colspan
-                            return null;
-                          }
-                        })
-                        .filter(Boolean)} */
-}

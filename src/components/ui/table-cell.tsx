@@ -1,3 +1,4 @@
+
 import React from "react";
 import CellActions from "./cell-actions";
 
@@ -9,7 +10,7 @@ interface TableCellProps {
   onEdit: (session: any) => void;
 }
 
-const TableCell1: React.FC<TableCellProps> = ({
+const TimeBlockCell: React.FC<TableCellProps> = ({
   session,
   slotIndex,
   getActivityColor,
@@ -32,4 +33,4 @@ const TableCell1: React.FC<TableCellProps> = ({
   );
 };
 
-export default TableCell1;
+export default TimeBlockCell;
