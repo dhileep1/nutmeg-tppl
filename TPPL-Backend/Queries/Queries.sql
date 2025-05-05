@@ -63,3 +63,22 @@ CREATE TABLE timesheets (
   end_time TIME DEFAULT '17:00:00',
   CONSTRAINT fk_user_time FOREIGN KEY (user_id) REFERENCES user_table(user_id)
 );
+
+/* Insert Queries */
+/* user_table */
+INSERT INTO user_table (user_name, email, user_id, dept, pan_card, designation, join_date)
+VALUES 
+('George', 'newuser@nmsolutions.co.in', 'U001', 'DEV', 'ABCDE1234F', 'Software Engineer', '2023-06-15');
+
+INSERT INTO user_table (user_name, email, user_id, dept, pan_card, designation, join_date)
+VALUES 
+('Kevin', 'newadmin@nmsolutions.co.in', 'A001', 'DEV', 'QK1883KDLS', 'Senior Software Engineer', '2023-06-17');
+
+INSERT INTO user_table (user_name, email, user_id, dept, pan_card, designation, join_date)
+VALUES 
+('John Doe', 'newuser2@nmsolutions.co.in', 'U002', 'DEV', 'HIJKL1234M', 'Junior Developer', '2025-05-05');
+
+/* role_table */
+INSERT INTO role_table values ('A001', 'admin');
+INSERT INTO role_table values ('U001', 'member');
+INSERT INTO role_table values ('U002', 'member');
