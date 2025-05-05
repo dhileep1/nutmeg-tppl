@@ -62,6 +62,7 @@ const Timesheet = () => {
     startOfWeek(new Date(), { weekStartsOn: 1 })
   ); // Monday
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
+  const [isEditDialogOpen, setEditDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     project_code: "91635109100",
     activity_code: "CODING",
@@ -203,10 +204,24 @@ const Timesheet = () => {
     });
   };
 
-  const handleEdit = (id: any) => {
-    console.log("Edit session:", id);
-    // Implement your edit logic
-    toast.info(`Editing session ${id}`);
+  console.log("Selected Timesheet", selectedTimesheet);
+
+  const handleEdit = (id: any, day: Date, startHour: number) => {
+    setEditDialogOpen(true);
+    let session;
+    for (let i = 0; i < timesheets.length; i++) {
+      if (timesheets[i].id === id) {
+        session = timesheets[i];
+      }
+    }
+    setSelectedTimesheet({
+      ...session,
+      date: format(session.date, "yyyy-MM-dd"),
+      status: null,
+      start_time: session.start_time,
+      end_time: session.end_time,
+    });
+    toast.info(`Editing session ${session.id}`);
   };
 
   const handleDelete = (id: any) => {
@@ -239,7 +254,7 @@ const Timesheet = () => {
         console.log(response.data);
         fetchWeeklyTimesheet();
         toast.success("Timesheet submitted for review");
-        setSelectedTimesheet(null);
+        setEditDialogOpen(false);
       })
       .catch((error) => console.log("Error while revising timesheet", error));
   };
@@ -435,24 +450,6 @@ const Timesheet = () => {
     }
   };
 
-  // Function to check if any time slot in a day is occupied by the session
-  const isStartOfSession = (day: Date, hour: number) => {
-    const dayString = format(day, "yyyy-MM-dd");
-    const hourDecimal = hour;
-
-    return timesheets.some((entry: any) => {
-      if (entry.date !== dayString) return false;
-
-      const entryStartTime = entry.start_time
-        ? parseFloat(entry.start_time.substring(0, 2)) +
-          parseFloat(entry.start_time.substring(3, 5)) / 60
-        : 9;
-
-      // Check if this is the start of the session
-      return Math.abs(hourDecimal - entryStartTime) < 0.01; // Small threshold to handle floating point comparison
-    });
-  };
-
   // Function to calculate daily total hours
   const getDailyTotalHours = (day: Date) => {
     const dayString = format(day, "yyyy-MM-dd");
@@ -546,8 +543,9 @@ const Timesheet = () => {
                                   session={session}
                                   slotIndex={slotIndex}
                                   getActivityColor={getActivityColor}
-                                  handleRevise={handleRevise}
-                                  onEdit={handleEdit}
+                                  onEdit={() =>
+                                    handleEdit(session.id, day, hour)
+                                  }
                                   onDelete={() => handleDelete(session.id)}
                                 ></TableCell1>
                               );
@@ -603,12 +601,7 @@ const Timesheet = () => {
       </Card>
 
       {/* Session Edit Dialog */}
-      <Dialog
-        open={!!selectedTimesheet}
-        onOpenChange={(open) => {
-          if (!open) setSelectedTimesheet(null);
-        }}
-      >
+      <Dialog open={isEditDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Timesheet Session</DialogTitle>
@@ -620,14 +613,9 @@ const Timesheet = () => {
           {selectedTimesheet && (
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="flex-col">
                   <p className="text-sm font-medium mb-1">Date</p>
-                  <p>
-                    {format(
-                      parseISO(selectedTimesheet.date),
-                      "EEEE, MMMM d, yyyy"
-                    )}
-                  </p>
+                  <p>{selectedTimesheet.date}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1">Project</p>
@@ -753,7 +741,7 @@ const Timesheet = () => {
               <Button
                 variant="outline"
                 className="mr-2"
-                onClick={() => setSelectedTimesheet(null)}
+                onClick={() => setEditDialogOpen(false)}
               >
                 Cancel
               </Button>
