@@ -56,6 +56,7 @@ const Timesheet = () => {
   const [emptyTimeSheet, setEmptyTimeSheet] = useState(
     Array.from({ length: 7 }, () => Array.from({ length: 8 }, () => null))
   );
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [formattedTimeSheets, setFormattedTimeSheets] =
     useState(emptyTimeSheet);
   const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
@@ -237,8 +238,6 @@ const Timesheet = () => {
       end_time: endTime,
     });
   };
-
-  console.log("Selected Timesheet", selectedTimesheet);
 
   const handleEdit = (id: any, day: Date, startHour: number) => {
     setIsEditDialogOpen(true);
@@ -522,6 +521,18 @@ const Timesheet = () => {
     setSelectedUserId(userId);
   };
 
+  const handleViewSheet = (id: any) => {
+    let record;
+    for (let i = 0; i < timesheets.length; i++) {
+      if (timesheets[i].id === id) {
+        record = timesheets[i];
+      }
+    }
+    setSelectedTimesheet(record);
+    console.log(record);
+    setIsViewOpen(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -612,6 +623,8 @@ const Timesheet = () => {
                                     handleEdit(session.id, day, hour)
                                   }
                                   onDelete={() => handleDelete(session.id)}
+                                  isAdmin={isAdmin}
+                                  toView={() => handleViewSheet(session.id)}
                                 />
                               );
                             } else {
@@ -663,6 +676,51 @@ const Timesheet = () => {
           )}
         </CardFooter>
       </Card>
+
+      {/* Session View Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>View Session Details</DialogTitle>
+          </DialogHeader>
+          {selectedTimesheet && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex-col">
+                  <p className="text-sm font-medium mb-1">Date</p>
+                  <p>{format(selectedTimesheet.date, "yyyy-MM-dd")}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1">Project</p>
+                  <p>{selectedTimesheet.project_code}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                  <p className="text-sm font-medium mb-1">Start Time</p>
+                  <p className="font-medium">{selectedTimesheet.start_time}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1">End Time</p>
+                  <p className="font-medium">{selectedTimesheet.end_time}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-sm font-medium mb-1">Activity</p>
+                  <p>{selectedTimesheet.activity_code}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1">Shift</p>
+                  <p>{selectedTimesheet.shift_code}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Session Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
