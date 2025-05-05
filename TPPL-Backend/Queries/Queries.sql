@@ -58,7 +58,7 @@ CREATE TABLE timesheets (
   date DATE,
   leave NUMERIC,
   comp_off NUMERIC,
-  status varchar(20) DEFAULT 'Pending',
+  status varchar(20) DEFAULT null,
   start_time TIME DEFAULT '09:00:00',
   end_time TIME DEFAULT '17:00:00',
   CONSTRAINT fk_user_time FOREIGN KEY (user_id) REFERENCES user_table(user_id)

@@ -1,6 +1,16 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
-import { format, startOfWeek, addDays, isSameDay, parse, parseISO, isWithinInterval, addHours } from "date-fns";
+import TableCell1 from "@/components/ui/table-cell";
+import {
+  format,
+  startOfWeek,
+  addDays,
+  isSameDay,
+  parse,
+  parseISO,
+  isWithinInterval,
+  addHours,
+} from "date-fns";
 import {
   Table,
   TableBody,
@@ -42,8 +52,15 @@ import axios from "axios";
 const Timesheet = () => {
   const { user } = useAuth();
   const [timesheets, setTimesheets] = useState([]);
+  const [emptyTimeSheet, setEmptyTimeSheet] = useState(
+    Array.from({ length: 7 }, () => Array.from({ length: 8 }, () => null))
+  );
+  const [formattedTimeSheets, setFormattedTimeSheets] =
+    useState(emptyTimeSheet);
   const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
-  const [currentWeekStart, setCurrentWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 })); // Monday
+  const [currentWeekStart, setCurrentWeekStart] = useState(
+    startOfWeek(new Date(), { weekStartsOn: 1 })
+  ); // Monday
   const [isNewEntryDialogOpen, setIsNewEntryDialogOpen] = useState(false);
   const [newEntry, setNewEntry] = useState({
     project_code: "91635109100",
@@ -52,25 +69,32 @@ const Timesheet = () => {
     hours: 1,
     date: new Date().toISOString().split("T")[0],
     start_time: "09:00",
-    end_time: "10:00"
+    end_time: "10:00",
   });
-  const [dragStart, setDragStart] = useState<{day: Date, hour: number} | null>(null);
+  const [refresh, setRefresh] = useState(true);
+  const [dragStart, setDragStart] = useState<{
+    day: Date;
+    hour: number;
+  } | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{start: number, end: number} | null>(null);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
 
   const isAdmin = user?.role === "admin";
-  
+
   // Fixed to 1-hour blocks
   const slotCount = 8; // 8 hour blocks for 9AM-5PM
   const slotUnit = 1; // 1 hour per block
-  
+
   // Generate time slots
   const timeSlots = [];
   for (let i = 0; i < slotCount; i++) {
-    const hour = Math.floor(9 + (i * slotUnit));
+    const hour = Math.floor(9 + i * slotUnit);
     const minute = ((i * slotUnit) % 1) * 60;
-    const formattedHour = hour.toString().padStart(2, '0');
-    const formattedMinute = minute.toString().padStart(2, '0');
+    const formattedHour = hour.toString().padStart(2, "0");
+    const formattedMinute = minute.toString().padStart(2, "0");
     timeSlots.push(`${formattedHour}:${formattedMinute}`);
   }
 
@@ -82,7 +106,10 @@ const Timesheet = () => {
 
   const fetchWeeklyTimesheet = async () => {
     try {
-      const res = await fetch(`http://localhost:3000/timesheet/${user.user_id}`);
+      const start_date = format(currentWeekStart, "yyyy-MM-dd");
+      const res = await fetch(
+        `http://localhost:3000/timesheet/${user.user_id}/${start_date}`
+      );
       const json = await res.json();
       setTimesheets(json.data || []);
     } catch (error) {
@@ -93,14 +120,50 @@ const Timesheet = () => {
 
   useEffect(() => {
     fetchWeeklyTimesheet();
-  }, [currentWeekStart]);
+  }, [currentWeekStart, refresh]);
+
+  // Mapping timesheets to formatted grid structure
+  useEffect(() => {
+    const start_hour = 9;
+    const table: (null | {
+      id: string;
+      project_code: string;
+      activity_code: string;
+      shift_code: string;
+    })[][] = [];
+
+    for (let i = 0, index = 0; i < 7; i++) {
+      let row = [];
+      for (let j = 0; j < 8; j++) {
+        if (index < timesheets.length) {
+          let time_str = timesheets[index].start_time;
+          let hour_only = parseInt(time_str.split(":")[0]);
+          if (hour_only === start_hour + j) {
+            row.push({
+              id: timesheets[index].id,
+              project_code: timesheets[index].project_code,
+              activity_code: timesheets[index].activity_code,
+              shift_code: timesheets[index].shift_code,
+            });
+            index++;
+          } else {
+            row.push(null);
+          }
+        } else {
+          row.push(null);
+        }
+      }
+      table.push(row);
+    }
+
+    setFormattedTimeSheets(table.length ? table : emptyTimeSheet);
+  }, [timesheets]);
 
   const handleApprove = (id: number) => {
     axios
       .patch(`http://127.0.0.1:3000/timesheet/update/${id}/Approved`)
       .then((response) => {
         console.log(response.data);
-        fetchWeeklyTimesheet();
         toast.success("Timesheet approved successfully");
       })
       .catch((error) => console.log(error));
@@ -111,7 +174,6 @@ const Timesheet = () => {
       .patch(`http://127.0.0.1:3000/timesheet/update/${id}/Rejected`)
       .then((response) => {
         console.log(response.data);
-        fetchWeeklyTimesheet();
         toast.success("Timesheet rejected");
       })
       .catch((error) => console.log(error));
@@ -120,23 +182,42 @@ const Timesheet = () => {
   const handleRevise = (timesheet: any) => {
     // Convert database time format to HH:MM
     const date = timesheet.date;
-    
+
     // Extract hours from the hours field to calculate end time
     const hours = parseInt(timesheet.hours);
     // Assuming start_time is stored in the database as HH:MM:SS or similar
-    const startTime = timesheet.start_time ? timesheet.start_time.substring(0, 5) : "09:00";
-    
+    const startTime = timesheet.start_time
+      ? timesheet.start_time.substring(0, 5)
+      : "09:00";
+
     // Calculate end time based on start time and duration
     const start = parseISO(`${date}T${startTime}`);
     const end = addHours(start, hours);
     const endTime = format(end, "HH:mm");
-    
-    setSelectedTimesheet({ 
-      ...timesheet, 
-      status: "Pending",
+
+    setSelectedTimesheet({
+      ...timesheet,
+      status: null,
       start_time: startTime,
-      end_time: endTime
+      end_time: endTime,
     });
+  };
+
+  const handleEdit = (id: any) => {
+    console.log("Edit session:", id);
+    // Implement your edit logic
+    toast.info(`Editing session ${id}`);
+  };
+
+  const handleDelete = (id: any) => {
+    axios
+      .delete(`http://localhost:3000/timesheet/delete/${id}`)
+      .then((response) => {
+        console.log(response.data);
+        toast.warning(`Deleting session ${id}`);
+      })
+      .catch((error) => console.log("Error while deleting", error));
+    setTimesheets((prevState) => prevState.filter((elem) => elem.id !== id));
   };
 
   const handleSubmitRevision = () => {
@@ -152,7 +233,7 @@ const Timesheet = () => {
         activity_code: selectedTimesheet.activity_code,
         shift_code: selectedTimesheet.shift_code,
         start_time: selectedTimesheet.start_time,
-        end_time: selectedTimesheet.end_time
+        end_time: selectedTimesheet.end_time,
       })
       .then((response) => {
         console.log(response.data);
@@ -175,39 +256,48 @@ const Timesheet = () => {
     const startTime = parse(newEntry.start_time, "HH:mm", new Date());
     const endTime = parse(newEntry.end_time, "HH:mm", new Date());
     const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-    
+
     // Validate time range
     if (startTime >= endTime) {
       toast.error("End time must be after start time");
       return;
     }
-    
+
     // Check if the new entry would overlap with existing entries
-    const entriesOnSameDay = timesheets.filter((entry: any) => 
-      entry.date === newEntry.date
+    const entriesOnSameDay = timesheets.filter(
+      (entry: any) => entry.date === newEntry.date
     );
-    
+
     // Check for overlap
     const hasOverlap = entriesOnSameDay.some((entry: any) => {
-      const entryStart = parse(entry.start_time.substring(0, 5), "HH:mm", new Date());
+      const entryStart = parse(
+        entry.start_time.substring(0, 5),
+        "HH:mm",
+        new Date()
+      );
       const entryHours = parseFloat(entry.hours);
-      const entryEnd = new Date(entryStart.getTime() + entryHours * 60 * 60 * 1000);
-      
-      return isWithinInterval(startTime, {start: entryStart, end: entryEnd}) || 
-             isWithinInterval(endTime, {start: entryStart, end: entryEnd}) ||
-             (startTime <= entryStart && endTime >= entryEnd);
+      const entryEnd = new Date(
+        entryStart.getTime() + entryHours * 60 * 60 * 1000
+      );
+
+      return (
+        isWithinInterval(startTime, { start: entryStart, end: entryEnd }) ||
+        isWithinInterval(endTime, { start: entryStart, end: entryEnd }) ||
+        (startTime <= entryStart && endTime >= entryEnd)
+      );
     });
-    
+
     if (hasOverlap) {
       toast.error("This time slot overlaps with an existing entry");
       return;
     }
-    
+
     // Check if adding this entry would exceed 8 hours for the day
-    const totalHoursForDay = entriesOnSameDay.reduce((sum: number, entry: any) => 
-      sum + parseFloat(entry.hours), 0
+    const totalHoursForDay = entriesOnSameDay.reduce(
+      (sum: number, entry: any) => sum + parseFloat(entry.hours),
+      0
     );
-    
+
     if (totalHoursForDay + hours > 8) {
       toast.error("Adding this entry would exceed the 8-hour daily limit");
       return;
@@ -224,11 +314,11 @@ const Timesheet = () => {
       date: newEntry.date,
       leave: 0,
       comp_off: 0,
-      status: "Pending",
+      status: null,
       start_time: newEntry.start_time,
-      end_time: newEntry.end_time
+      end_time: newEntry.end_time,
     };
-    
+
     console.log("Add Entry", newTimesheet);
     try {
       const res = await fetch("http://localhost:3000/addsheet", {
@@ -261,32 +351,40 @@ const Timesheet = () => {
     setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
-  const handleSubmitAll = () => {
-    toast.success("All pending timesheets submitted successfully");
+  const handleNextWeek = () => {
+    setCurrentWeekStart(addDays(currentWeekStart, 7));
   };
 
-  // Function to get timesheet entries for a specific day
-  const getEntriesForDay = (day: Date) => {
-    const dayString = format(day, "yyyy-MM-dd");
-    return timesheets.filter((entry: any) => entry.date === dayString);
+  const handleSubmitAll = () => {
+    const start_date = format(currentWeekStart, "yyyy-MM-dd");
+    axios
+      .patch(`http://localhost:3000/timesheet/update_week/:${start_date}`)
+      .then((response) => console.log("Response", response))
+      .catch((error) => console.log("Error", error));
+    toast.success("All pending timesheets submitted successfully");
+    setRefresh((prevState) => !prevState);
   };
 
   // Handle clicking on a time cell to open new entry dialog
   const handleTimeSlotClick = (day: Date, startHour: number) => {
     // Format the date and time values
     const formattedDate = format(day, "yyyy-MM-dd");
-    const formattedStartHour = Math.floor(startHour).toString().padStart(2, '0');
-    const formattedStartMinute = ((startHour % 1) * 60).toString().padStart(2, '0');
+    const formattedStartHour = Math.floor(startHour)
+      .toString()
+      .padStart(2, "0");
+    const formattedStartMinute = ((startHour % 1) * 60)
+      .toString()
+      .padStart(2, "0");
     const startTime = `${formattedStartHour}:${formattedStartMinute}`;
-    
+
     // Calculate end time (1 hour later)
     let endHour = startHour + slotUnit;
     if (endHour > 17) endHour = 17;
-    
-    const formattedEndHour = Math.floor(endHour).toString().padStart(2, '0');
-    const formattedEndMinute = ((endHour % 1) * 60).toString().padStart(2, '0');
+
+    const formattedEndHour = Math.floor(endHour).toString().padStart(2, "0");
+    const formattedEndMinute = ((endHour % 1) * 60).toString().padStart(2, "0");
     const endTime = `${formattedEndHour}:${formattedEndMinute}`;
-    
+
     // Update new entry state with pre-filled time values based on clicked time slot
     setNewEntry({
       project_code: "91635109100",
@@ -295,61 +393,10 @@ const Timesheet = () => {
       hours: slotUnit,
       date: formattedDate,
       start_time: startTime,
-      end_time: endTime
+      end_time: endTime,
     });
-    
+
     setIsNewEntryDialogOpen(true);
-  };
-
-  // Function to check if a time slot is occupied
-  const isTimeSlotOccupied = (day: Date, hour: number) => {
-    const dayString = format(day, "yyyy-MM-dd");
-    const hourDecimal = hour;
-    
-    return timesheets.some((entry: any) => {
-      if (entry.date !== dayString) return false;
-      
-      const entryStartTime = entry.start_time ? 
-        parseFloat(entry.start_time.substring(0, 2)) + (parseFloat(entry.start_time.substring(3, 5)) / 60) : 
-        9;
-      
-      const entryHours = parseFloat(entry.hours || 1);
-      const entryEndTime = entryStartTime + entryHours;
-      
-      return (hourDecimal >= entryStartTime && hourDecimal < entryEndTime);
-    });
-  };
-
-  // Function to get the session at a specific time slot
-  const getSessionAtTimeSlot = (day: Date, hour: number) => {
-    const dayString = format(day, "yyyy-MM-dd");
-    const hourDecimal = hour;
-    
-    return timesheets.find((entry: any) => {
-      if (entry.date !== dayString) return false;
-      
-      const entryStartTime = entry.start_time ? 
-        parseFloat(entry.start_time.substring(0, 2)) + (parseFloat(entry.start_time.substring(3, 5)) / 60) : 
-        9;
-      
-      const entryHours = parseFloat(entry.hours || 1);
-      const entryEndTime = entryStartTime + entryHours;
-      
-      return (hourDecimal >= entryStartTime && hourDecimal < entryEndTime);
-    });
-  };
-
-  // Function to calculate session width in columns
-  const getSessionColSpan = (entry: any) => {
-    const startTime = entry.start_time ? 
-      parseFloat(entry.start_time.substring(0, 2)) + (parseFloat(entry.start_time.substring(3, 5)) / 60) : 
-      9;
-      
-    const hours = parseFloat(entry.hours || 1);
-    const endTime = startTime + hours;
-    
-    // Calculate how many time slots this spans (fixed at 1 hour per slot)
-    return Math.ceil(hours);
   };
 
   // Function to get the abbreviated activity name for display
@@ -374,17 +421,17 @@ const Timesheet = () => {
   const getActivityColor = (activityCode: string) => {
     switch (activityCode) {
       case "CODING":
-        return "bg-blue-600 text-white";
+        return "bg-blue-300 text-blue-900"; // Calm and focused
       case "DESIGN":
-        return "bg-purple-600 text-white";
+        return "bg-pink-200 text-pink-900"; // Creative and gentle
       case "TESTING":
-        return "bg-green-600 text-white";
+        return "bg-green-300 text-green-900"; // Clarity and verification
       case "MEETING":
-        return "bg-amber-600 text-white";
+        return "bg-yellow-200 text-yellow-900"; // Attention-grabbing, soft
       case "OTHER":
-        return "bg-gray-600 text-white";
+        return "bg-gray-300 text-gray-900"; // Neutral fallback
       default:
-        return "bg-cyan-600 text-white";
+        return "bg-slate-200 text-slate-900"; // Light fallback for undefined
     }
   };
 
@@ -392,14 +439,15 @@ const Timesheet = () => {
   const isStartOfSession = (day: Date, hour: number) => {
     const dayString = format(day, "yyyy-MM-dd");
     const hourDecimal = hour;
-    
+
     return timesheets.some((entry: any) => {
       if (entry.date !== dayString) return false;
-      
-      const entryStartTime = entry.start_time ? 
-        parseFloat(entry.start_time.substring(0, 2)) + (parseFloat(entry.start_time.substring(3, 5)) / 60) : 
-        9;
-      
+
+      const entryStartTime = entry.start_time
+        ? parseFloat(entry.start_time.substring(0, 2)) +
+          parseFloat(entry.start_time.substring(3, 5)) / 60
+        : 9;
+
       // Check if this is the start of the session
       return Math.abs(hourDecimal - entryStartTime) < 0.01; // Small threshold to handle floating point comparison
     });
@@ -410,7 +458,10 @@ const Timesheet = () => {
     const dayString = format(day, "yyyy-MM-dd");
     return timesheets
       .filter((entry: any) => entry.date === dayString)
-      .reduce((sum: number, entry: any) => sum + parseFloat(entry.hours || 0), 0);
+      .reduce(
+        (sum: number, entry: any) => sum + parseFloat(entry.hours || 0),
+        0
+      );
   };
 
   // Function to determine if adding a session for this day is disabled
@@ -446,19 +497,14 @@ const Timesheet = () => {
             </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePreviousWeek}
-            >
+            <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
               Previous Week
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCurrentWeek}
-            >
+            <Button variant="outline" size="sm" onClick={handleCurrentWeek}>
               Current Week
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleNextWeek}>
+              Next Week
             </Button>
           </div>
         </CardHeader>
@@ -469,83 +515,65 @@ const Timesheet = () => {
                 <TableRow>
                   <TableHead className="w-28">Day</TableHead>
                   {timeSlots.map((timeSlot, index) => (
-                    <TableHead 
-                      key={index} 
-                      className="text-center min-w-[80px]"
-                    >
+                    <TableHead key={index} className="text-center min-w-[80px]">
                       {timeSlot}
                     </TableHead>
                   ))}
-                  <TableHead className="text-center w-28">Daily Total</TableHead>
+                  <TableHead className="text-center w-28">
+                    Daily Total
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {weekDays.map((day, dayIndex) => {
-                  const totalHours = getDailyTotalHours(day);
-                  const isAddDisabled = totalHours >= 8;
-                  
-                  return (
-                    <TableRow key={dayIndex} className={isToday(day) ? "bg-blue-50" : ""}>
-                      <TableCell className="font-medium">
-                        {format(day, "EEE, MMM d")}
-                      </TableCell>
-                      
-                      {/* Time slot cells */}
-                      {Array.from({ length: slotCount }).map((_, slotIndex) => {
-                        const hour = 9 + (slotIndex * slotUnit);
-                        const isOccupied = isTimeSlotOccupied(day, hour);
-                        const isSessionStart = isStartOfSession(day, hour);
-                        const session = isSessionStart ? getSessionAtTimeSlot(day, hour) : null;
-                        const colSpan = session ? getSessionColSpan(session) : 1;
-                        
-                        if (isSessionStart) {
-                          return (
-                            <TableCell 
-                              key={slotIndex} 
-                              colSpan={colSpan}
-                              className={`relative p-0 m-0 h-12 ${getActivityColor(session.activity_code)}`}
-                              onClick={() => handleRevise(session)}
-                            >
-                              <div className="flex items-center justify-between px-2 h-full cursor-pointer">
-                                <span className="font-bold">{getActivityAbbreviation(session.activity_code)}</span>
-                                <span className="text-xs whitespace-nowrap">
-                                  {session.start_time?.substring(0, 5)}-{
-                                    format(
-                                      addHours(
-                                        parse(session.start_time.substring(0, 5), "HH:mm", new Date()),
-                                        parseFloat(session.hours)
-                                      ),
-                                      "HH:mm"
-                                    )
-                                  }
-                                </span>
-                              </div>
-                            </TableCell>
-                          );
-                        } else if (!isOccupied) {
-                          // Empty cell that can be clicked to add a session
-                          return (
-                            <TableCell 
-                              key={slotIndex} 
-                              className="p-0 m-0 h-12 border cursor-pointer hover:bg-gray-100"
-                              onClick={() => !isAddDisabled && handleTimeSlotClick(day, hour)}
-                            >
-                              {isAddDisabled && <div className="w-full h-full bg-gray-100 opacity-50"></div>}
-                            </TableCell>
-                          );
-                        } else {
-                          // Skip cells that are covered by a session's colspan
-                          return null;
-                        }
-                      }).filter(Boolean)}
-                      
-                      <TableCell className="text-center">
-                        <Badge variant={totalHours >= 8 ? "default" : "outline"}>
-                          {totalHours.toFixed(1)} / 8 hrs
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
+                  let totalHours = 0;
+                  if (formattedTimeSheets.length > 0) {
+                    return (
+                      <TableRow
+                        key={dayIndex}
+                        className={isToday(day) ? "bg-blue-50" : ""}
+                      >
+                        <TableCell className="font-medium">
+                          {format(day, "EEE, MMM d")}
+                        </TableCell>
+                        {formattedTimeSheets[dayIndex]
+                          .map((session, slotIndex) => {
+                            const hour = 9 + slotIndex * slotUnit;
+                            if (session) {
+                              totalHours += 1;
+                              return (
+                                <TableCell1
+                                  session={session}
+                                  slotIndex={slotIndex}
+                                  getActivityColor={getActivityColor}
+                                  handleRevise={handleRevise}
+                                  onEdit={handleEdit}
+                                  onDelete={() => handleDelete(session.id)}
+                                ></TableCell1>
+                              );
+                            } else {
+                              // Empty cell that can be clicked to add a session
+                              return (
+                                <TableCell
+                                  key={slotIndex}
+                                  className="p-0 m-0 h-12 border cursor-pointer hover:bg-gray-100"
+                                  onClick={() => handleTimeSlotClick(day, hour)}
+                                ></TableCell>
+                              );
+                            }
+                          })
+                          .filter(Boolean)}
+                        {/* Time slot cells */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant={totalHours >= 8 ? "default" : "outline"}
+                          >
+                            {totalHours} / 8 hrs
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
                 })}
               </TableBody>
             </Table>
@@ -594,7 +622,12 @@ const Timesheet = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium mb-1">Date</p>
-                  <p>{format(parseISO(selectedTimesheet.date), "EEEE, MMMM d, yyyy")}</p>
+                  <p>
+                    {format(
+                      parseISO(selectedTimesheet.date),
+                      "EEEE, MMMM d, yyyy"
+                    )}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1">Project</p>
@@ -687,32 +720,34 @@ const Timesheet = () => {
 
           <DialogFooter className="flex justify-between">
             <div>
-              {isAdmin && selectedTimesheet && selectedTimesheet.status === "Pending" && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 mr-2"
-                    onClick={() => {
-                      handleApprove(selectedTimesheet.id);
-                      setSelectedTimesheet(null);
-                    }}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                    onClick={() => {
-                      handleReject(selectedTimesheet.id);
-                      setSelectedTimesheet(null);
-                    }}
-                  >
-                    Reject
-                  </Button>
-                </>
-              )}
+              {isAdmin &&
+                selectedTimesheet &&
+                selectedTimesheet.status === "Pending" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 mr-2"
+                      onClick={() => {
+                        handleApprove(selectedTimesheet.id);
+                        setSelectedTimesheet(null);
+                      }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                      onClick={() => {
+                        handleReject(selectedTimesheet.id);
+                        setSelectedTimesheet(null);
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </>
+                )}
             </div>
             <div>
               <Button
@@ -737,7 +772,11 @@ const Timesheet = () => {
           <DialogHeader>
             <DialogTitle>Add New Timesheet Session</DialogTitle>
             <DialogDescription>
-              Create a new timesheet session for {newEntry.date ? format(parseISO(newEntry.date), "EEEE, MMMM d, yyyy") : "today"} from {newEntry.start_time} to {newEntry.end_time}
+              Create a new timesheet session for{" "}
+              {newEntry.date
+                ? format(parseISO(newEntry.date), "EEEE, MMMM d, yyyy")
+                : "today"}{" "}
+              from {newEntry.start_time} to {newEntry.end_time}
             </DialogDescription>
           </DialogHeader>
 
@@ -769,23 +808,39 @@ const Timesheet = () => {
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Date</p>
-                <p className="text-sm font-medium">{newEntry.date ? format(parseISO(newEntry.date), "MMMM d, yyyy") : ""}</p>
+                <p className="text-sm font-medium">
+                  {newEntry.date
+                    ? format(parseISO(newEntry.date), "MMMM d, yyyy")
+                    : ""}
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm font-medium mb-1">Time Slot</p>
-                <p className="text-sm font-medium">{newEntry.start_time} - {newEntry.end_time}</p>
+                <p className="text-sm font-medium">
+                  {newEntry.start_time} - {newEntry.end_time}
+                </p>
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">Duration</p>
                 <p className="text-sm font-medium">
                   {(() => {
-                    const startTime = parse(newEntry.start_time, "HH:mm", new Date());
-                    const endTime = parse(newEntry.end_time, "HH:mm", new Date());
-                    const hours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-                    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+                    const startTime = parse(
+                      newEntry.start_time,
+                      "HH:mm",
+                      new Date()
+                    );
+                    const endTime = parse(
+                      newEntry.end_time,
+                      "HH:mm",
+                      new Date()
+                    );
+                    const hours =
+                      (endTime.getTime() - startTime.getTime()) /
+                      (1000 * 60 * 60);
+                    return `${hours} hour${hours !== 1 ? "s" : ""}`;
                   })()}
                 </p>
               </div>
@@ -847,5 +902,73 @@ const Timesheet = () => {
     </div>
   );
 };
-
 export default Timesheet;
+
+{
+  /* {Array.from({ length: slotCount })
+                        .map((_, slotIndex) => {
+                          const hour = 9 + slotIndex * slotUnit;
+                          const isOccupied = isTimeSlotOccupied(day, hour);
+                          const isSessionStart = isStartOfSession(day, hour);
+                          const session = isSessionStart
+                            ? getSessionAtTimeSlot(day, hour)
+                            : null;
+                          const colSpan = session
+                            ? getSessionColSpan(session)
+                            : 1;
+                          if (isSessionStart) {
+                            return (
+                              <TableCell
+                                key={slotIndex}
+                                colSpan={colSpan}
+                                className={`relative p-0 m-0 h-12 ${getActivityColor(
+                                  session.activity_code
+                                )}`}
+                                onClick={() => handleRevise(session)}
+                              >
+                                <div className="flex items-center justify-between px-2 h-full cursor-pointer">
+                                  <span className="font-bold">
+                                    {getActivityAbbreviation(
+                                      session.activity_code
+                                    )}
+                                  </span>
+                                  <span className="text-xs whitespace-nowrap">
+                                    {session.start_time?.substring(0, 5)}-
+                                    {format(
+                                      addHours(
+                                        parse(
+                                          session.start_time.substring(0, 5),
+                                          "HH:mm",
+                                          new Date()
+                                        ),
+                                        parseFloat(session.hours)
+                                      ),
+                                      "HH:mm"
+                                    )}
+                                  </span>
+                                </div>
+                              </TableCell>
+                            );
+                          } else if (!isOccupied) {
+                            // Empty cell that can be clicked to add a session
+                            return (
+                              <TableCell
+                                key={slotIndex}
+                                className="p-0 m-0 h-12 border cursor-pointer hover:bg-gray-100"
+                                onClick={() =>
+                                  !isAddDisabled &&
+                                  handleTimeSlotClick(day, hour)
+                                }
+                              >
+                                {isAddDisabled && (
+                                  <div className="w-full h-full bg-gray-100 opacity-50"></div>
+                                )}
+                              </TableCell>
+                            );
+                          } else {
+                            // Skip cells that are covered by a session's colspan
+                            return null;
+                          }
+                        })
+                        .filter(Boolean)} */
+}

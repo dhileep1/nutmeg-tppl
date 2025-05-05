@@ -1,4 +1,3 @@
-
 import express from "express";
 import cors from "cors";
 import { pool } from "./Database.js";
@@ -179,12 +178,17 @@ app.get("/payroll/:user_id", async (req, res) => {
 
 /* -- Timesheet Modules -- */
 
-app.get("/timesheet/:id", async (req, res) => {
-  const user_id = String(req.params.id);
+app.get("/timesheet/:id/:start_date", async (req, res) => {
+  const user_id = req.params.id;
+  const start_date = req.params.start_date;
+  let last_date = new Date(start_date);
+  last_date.setDate(last_date.getDate() + 6);
+  last_date = last_date.toISOString().split("T")[0];
+  console.log(user_id, start_date, last_date);
   try {
     const result = await pool.query(
-      "SELECT u.user_name, t.* from user_table u inner join timesheets t on u.user_id = t.user_id where u.user_id = $1",
-      [user_id]
+      "SELECT u.user_name, t.* FROM user_table u INNER JOIN timesheets t ON u.user_id = t.user_id WHERE u.user_id = $1 AND t.date BETWEEN $2 and $3 ORDER BY t.date, t.start_time",
+      [user_id, start_date, last_date]
     );
     res.status(200).json({ message: "success", data: result.rows });
   } catch (error) {
@@ -207,9 +211,9 @@ app.post("/addsheet", async (req, res) => {
     comp_off,
     status,
     start_time,
-    end_time
+    end_time,
   } = req.body;
-  
+
   console.log("addsheet", req.body);
   try {
     const result = await pool.query(
@@ -229,9 +233,9 @@ app.post("/addsheet", async (req, res) => {
         date,
         leave,
         comp_off,
-        status || "Pending",
+        status,
         start_time,
-        end_time
+        end_time,
       ]
     );
     res.status(201).json(result.rows[0]);
@@ -245,7 +249,7 @@ app.patch("/timesheet/update/:id/:status", async (req, res) => {
   const id = req.params.id;
   const status = req.params.status;
   const response = await pool.query(
-    "UPDATE timesheets set status = $2 where id = $1",
+    "UPDATE timesheets SET status = $2 WHERE id = $1",
     [id, status]
   );
   return res.status(200).json({ message: "Updated Successfully" });
@@ -253,7 +257,8 @@ app.patch("/timesheet/update/:id/:status", async (req, res) => {
 
 app.put("/timesheet/revise/:id", async (req, res) => {
   const id = req.params.id;
-  const { hours, date, activity_code, shift_code, start_time, end_time } = req.body;
+  const { hours, date, activity_code, shift_code, start_time, end_time } =
+    req.body;
   console.log(req.body);
   try {
     const response = await pool.query(
@@ -271,6 +276,41 @@ app.put("/timesheet/revise/:id", async (req, res) => {
   }
 });
 
+app.patch("/timesheet/update_week/:start_date", async (req, res) => {
+  try {
+    const start_date = req.params.start_date;
+    let last_date = new Date(start_date);
+    last_date.setDate(last_date.getDate() + 6);
+    last_date = last_date.toISOString().split("T")[0];
+    console.log("Start Date", start_date);
+    const response = await pool.query(
+      `UPDATE timesheets 
+       SET status = $3 
+       WHERE status IS NULL AND date BETWEEN $1 AND $2`,
+      [start_date, last_date, "Pending"]
+    );
+
+    return res
+      .status(200)
+      .json({ message: "Submitted Weekly Report Successfully" });
+  } catch (err) {
+    console.error("Error updating timesheets:", err);
+    return res.status(500).json({ error: "Error Submitting Weekly Records" });
+  }
+});
+
+app.delete("/timesheet/delete/:id", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const response = await pool.query("DELETE FROM timesheets WHERE id = $1", [
+      id,
+    ]);
+    return res.status(200).json({ message: "Successfully deleted the record" });
+  } catch (error) {
+    console.error("Error while deleting the record");
+    return res.status(500).json({ error: "Error Deleting Record" });
+  }
+});
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
