@@ -64,7 +64,6 @@ const Leave = () => {
     { leave_type: "Casual Leave", total: 20, used: 0, balance: 20 },
     { leave_type: "Compensatory Off", total: 20, used: 0, balance: 20 },
   ]);
-  const user_id = "U001";
 
   // Get team leave dates for highlighting on calendar
   const fetchLeaveData = async () => {
@@ -74,6 +73,11 @@ const Leave = () => {
 
   useEffect(() => {
     fetchLeaveData();
+  }, [refresh]);
+
+  console.log("Leave Data", leaveData);
+
+  useEffect(() => {
     axios
       .get(`http://127.0.0.1:3000/leave_balance/${user.user_id}`)
       .then((response) => {
@@ -91,9 +95,8 @@ const Leave = () => {
         });
       })
       .catch((error) => console.log(error));
-  }, [refresh]);
-
-  useEffect(() => {}, [refresh]);
+    console.log("Triggered...");
+  }, [leaveData]);
 
   const getTeamLeaveHighlights = () => {
     // Map dates to highlight on calendar

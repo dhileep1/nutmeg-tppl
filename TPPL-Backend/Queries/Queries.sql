@@ -54,7 +54,7 @@ CREATE TABLE timesheets (
   project_code varchar(30),
   activity_code varchar(30),
   shift_code varchar(30),
-  hours NUMERIC,
+  hours NUMERIC DEFAULT 1,
   date DATE,
   leave NUMERIC,
   comp_off NUMERIC,

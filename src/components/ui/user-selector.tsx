@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Select,
@@ -10,7 +9,7 @@ import {
 import { Users } from "lucide-react";
 
 interface UserSelectorProps {
-  users: { user_id: string; name: string }[];
+  users: { user_id: string; user_name: string }[];
   selectedUserId: string;
   onSelectUser: (userId: string) => void;
 }
@@ -30,7 +29,7 @@ const UserSelector: React.FC<UserSelectorProps> = ({
         <SelectContent>
           {users.map((user) => (
             <SelectItem key={user.user_id} value={user.user_id}>
-              {user.name}
+              {user.user_name}
             </SelectItem>
           ))}
         </SelectContent>

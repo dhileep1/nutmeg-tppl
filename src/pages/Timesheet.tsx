@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import TimeBlockCell from "@/components/ui/table-cell";
@@ -57,7 +56,8 @@ const Timesheet = () => {
   const [emptyTimeSheet, setEmptyTimeSheet] = useState(
     Array.from({ length: 7 }, () => Array.from({ length: 8 }, () => null))
   );
-  const [formattedTimeSheets, setFormattedTimeSheets] = useState(emptyTimeSheet);
+  const [formattedTimeSheets, setFormattedTimeSheets] =
+    useState(emptyTimeSheet);
   const [selectedTimesheet, setSelectedTimesheet] = useState<any>(null);
   const [currentWeekStart, setCurrentWeekStart] = useState(
     startOfWeek(new Date(), { weekStartsOn: 1 })
@@ -78,15 +78,16 @@ const Timesheet = () => {
     day: Date;
     hour: number;
   } | null>(null);
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{
-    start: number;
-    end: number;
-  } | null>(null);
-  
+
   // Admin-specific states
-  const [allUsers, setAllUsers] = useState<{ user_id: string; name: string }[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string>(user?.user_id || "");
+  const [allUsers, setAllUsers] = useState<
+    { user_id: string; user_name: string }[]
+  >([]);
+
+  const [selectedUserId, setSelectedUserId] = useState<string>(
+    user?.user_id || ""
+  );
+
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   const isAdmin = user?.role === "admin";
@@ -115,10 +116,11 @@ const Timesheet = () => {
   useEffect(() => {
     if (isAdmin) {
       setIsLoadingUsers(true);
-      fetch("http://localhost:3000/users")
-        .then((res) => res.json())
-        .then((data) => {
-          setAllUsers(data.data || []);
+      axios
+        .get("http://localhost:3000/users")
+        .then((response) => {
+          console.log("Response", response.data);
+          setAllUsers(response.data || []);
           setIsLoadingUsers(false);
         })
         .catch((err) => {
@@ -186,14 +188,20 @@ const Timesheet = () => {
     setFormattedTimeSheets(table.length ? table : emptyTimeSheet);
   }, [timesheets]);
 
-  const handleApprove = (id: number) => {
+  const handleApprove = () => {
     axios
-      .patch(`http://127.0.0.1:3000/timesheet/update/${id}/Approved`)
+      .patch(
+        `http://127.0.0.1:3000/timesheet/approve/${selectedUserId}/${format(
+          currentWeekStart,
+          "yyyy-MM-dd"
+        )}`
+      )
       .then((response) => {
         console.log(response.data);
         toast.success("Timesheet approved successfully");
       })
       .catch((error) => console.log(error));
+    toast.info("Approved Weekly Report");
   };
 
   const handleReject = (id: number) => {
@@ -402,9 +410,11 @@ const Timesheet = () => {
   const handleSubmitAll = () => {
     const start_date = format(currentWeekStart, "yyyy-MM-dd");
     const userId = isAdmin && selectedUserId ? selectedUserId : user.user_id;
-    
+
     axios
-      .patch(`http://localhost:3000/timesheet/update_week/${userId}/${start_date}`)
+      .patch(
+        `http://localhost:3000/timesheet/update_week/${userId}/${start_date}`
+      )
       .then((response) => {
         console.log("Response", response);
         toast.success("All pending timesheets submitted successfully");
@@ -522,7 +532,11 @@ const Timesheet = () => {
           </p>
         </div>
         <div className="flex space-x-3">
-          <Button onClick={handleSubmitAll}>Submit Week</Button>
+          {isAdmin ? (
+            <Button onClick={handleApprove}>Approve Week</Button>
+          ) : (
+            <Button onClick={handleSubmitAll}>Submit Week</Button>
+          )}
         </div>
       </div>
 
@@ -536,7 +550,7 @@ const Timesheet = () => {
           </div>
           <div className="flex flex-col md:flex-row gap-4 items-end md:items-center">
             {isAdmin && (
-              <UserSelector 
+              <UserSelector
                 users={allUsers}
                 selectedUserId={selectedUserId}
                 onSelectUser={handleUserSelection}
@@ -767,7 +781,7 @@ const Timesheet = () => {
                       size="sm"
                       className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 mr-2"
                       onClick={() => {
-                        handleApprove(selectedTimesheet.id);
+                        handleApprove();
                         setSelectedTimesheet(null);
                       }}
                     >

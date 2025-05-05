@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { pool } from "./Database.js";
+import { Rss } from "lucide-react";
 
 const app = express();
 
@@ -310,6 +311,41 @@ app.delete("/timesheet/delete/:id", async (req, res) => {
     console.error("Error while deleting the record");
     return res.status(500).json({ error: "Error Deleting Record" });
   }
+});
+
+app.patch(
+  "/timesheet/approve/:selectedUserId/:start_date",
+  async (req, res) => {
+    try {
+      const user_id = req.params.selectedUserId;
+      const start_date = req.params.start_date;
+      let last_date = new Date(start_date);
+      last_date.setDate(last_date.getDate() + 6);
+      last_date = last_date.toISOString().split("T")[0];
+      console.log("Start Date", start_date);
+      console.log("User Id", user_id);
+      console.log("End Date", last_date);
+      const response = await pool.query(
+        `UPDATE timesheets 
+       SET status = $3
+       WHERE status = 'Pending' AND user_id = $4 AND date BETWEEN $1 AND $2`,
+        [start_date, last_date, "Approved", user_id]
+      );
+      return res
+        .status(200)
+        .json({ message: "Approved Weekly Report Successfully" });
+    } catch (error) {
+      console.log("Error while approving timesheets");
+      res.status(500).json({ error: "Error Approving Timesheets" });
+    }
+  }
+);
+/* ADMIN */
+app.get("/users", async (req, res) => {
+  const result = await pool.query(
+    "SELECT u.user_id, u.user_name from user_table u inner join role_table r on u.user_id = r.user_id where r.role_type = 'member'"
+  );
+  return res.status(200).json(result.rows);
 });
 app.listen(3000, () => {
   console.log("Server running on port 3000");
